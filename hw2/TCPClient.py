@@ -4,8 +4,8 @@
 
 from socket import *
 
-serverName = 'nsl2.cau.ac.kr'
-serverPort = 12000
+serverName = 'localhost'
+serverPort = 26342
 
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((serverName, serverPort))

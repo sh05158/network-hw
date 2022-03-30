@@ -8,8 +8,8 @@ import ("bufio"; "fmt"; "net"; "os")
 
 func main() {
 
-    serverName := "nsl2.cau.ac.kr"
-    serverPort := "12000"
+    serverName := "localhost"
+    serverPort := "26342"
 
     conn, _:= net.Dial("tcp", serverName+":"+serverPort)
 
@@ -26,3 +26,10 @@ func main() {
 
     conn.Close()
 }
+
+
+// option 1) convert text to UPPER-case letters. // a feature that SimpleEcho programs already have.
+// option 2) ask the server what the IP address and port number of the client is.
+// option 3) ask the server how many client requests(commands) it has served so far.
+// option 4) ask the server program how long it has been running for since it started.
+// option 5) exit client program
