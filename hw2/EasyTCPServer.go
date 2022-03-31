@@ -90,7 +90,7 @@ func handleMsg(conn net.Conn) {
 		switch requestOption {
 		case 1:
 			upperString := strings.ToUpper(requestData)
-			sendPacket(conn,upperString)
+			sendPacket(conn, upperString)
 		case 2:
 			ip := conn.RemoteAddr()
 			sendPacket(conn, ip.String())
@@ -98,6 +98,7 @@ func handleMsg(conn net.Conn) {
 			sendPacket(conn, strconv.Itoa(totalRequests))
 		case 4:
 			elapsed := time.Since(startTime).Truncate(time.Second).String()
+
 			sendPacket(conn, string(elapsed))
 		case 5:
 			conn.Close()
@@ -110,6 +111,6 @@ func handleMsg(conn net.Conn) {
 
 }
 
-func sendPacket(conn net.Conn, serverMsg string){
+func sendPacket(conn net.Conn, serverMsg string) {
 	conn.Write([]byte(serverMsg))
 }

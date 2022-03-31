@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var serverName string = "nsl2.cau.ac.kr"
+var serverName string = "localhost"
 var serverPort string = "26342"
 
 func main() {
@@ -109,8 +109,8 @@ func processOption(opt int, conn net.Conn) {
 
 	startTime := time.Now()
 
-	// var temp int
-	// fmt.Scanf("%s", &temp)
+	var temp int
+	fmt.Scanf("%s", &temp)
 
 	switch opt {
 	case 1:
@@ -120,29 +120,31 @@ func processOption(opt int, conn net.Conn) {
 		requestString := strconv.Itoa(opt) + "|" + input
 		sendPacket(conn, requestString)
 		buffer := make([]byte, 1024)
-		readPacket(conn, &buffer)
-		fmt.Printf("Reply from server: %s\n", string(buffer))
+		bufferSize := readPacket(conn, &buffer)
+		fmt.Printf("Reply from server: %s\n", string(buffer[:bufferSize]))
 
 	case 2:
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
 		buffer := make([]byte, 1024)
-		readPacket(conn, &buffer)
-		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(string(buffer), ":")[0]), string(strings.Split(string(buffer), ":")[1]))
+		bufferSize := readPacket(conn, &buffer)
+		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(string(buffer[:bufferSize]), ":")[0]), string(strings.Split(string(buffer[:bufferSize]), ":")[1]))
 
 	case 3:
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
 		buffer := make([]byte, 1024)
-		readPacket(conn, &buffer)
-		fmt.Printf("Total client request count = %s\n", string(buffer))
+		bufferSize := readPacket(conn, &buffer)
+		fmt.Printf("Reply from server: requests served = %s\n", string(buffer[:bufferSize]))
 
 	case 4:
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
 		buffer := make([]byte, 1024)
-		readPacket(conn, &buffer)
-		fmt.Printf("Server started %s seconds ago\n", string(buffer))
+		bufferSize := readPacket(conn, &buffer)
+		timeD, _ := time.ParseDuration(string(buffer[:bufferSize]))
+
+		printDuration(timeD)
 
 	case 5:
 		byebye()
@@ -153,23 +155,46 @@ func processOption(opt int, conn net.Conn) {
 		conn.Close()
 		os.Exit(0)
 	}
-	elapsed := time.Since(startTime).Truncate(time.Millisecond).String()
-	fmt.Printf("RTT = %s \n", elapsed)
+	printRTT(time.Since(startTime))
 
+}
+
+func printRTT(d time.Duration) {
+	d = d.Round(time.Millisecond)
+
+	s := d / time.Millisecond
+
+	fmt.Printf("RTT = %dms \n", s)
+
+}
+func printDuration(d time.Duration) {
+	d = d.Round(time.Second)
+
+	h := d / time.Hour
+	d -= h * time.Hour
+
+	m := d / time.Minute
+	d -= m * time.Minute
+
+	s := d / time.Second
+	d -= s * time.Second
+
+	fmt.Printf("Reply from server: run time = %02d:%02d:%02d\n", h, m, s)
 }
 
 func sendPacket(conn net.Conn, requestString string) {
 	conn.Write([]byte(requestString))
 }
 
-func readPacket(conn net.Conn, buffer *[]byte) {
-	_, err := conn.Read(*buffer)
+func readPacket(conn net.Conn, buffer *[]byte) int {
+	count, err := conn.Read(*buffer)
 	if err != nil {
 		fmt.Println("connection is closed by server")
 		byebye()
 		conn.Close()
 		os.Exit(0)
 	}
+	return count
 }
 
 func printOption() {

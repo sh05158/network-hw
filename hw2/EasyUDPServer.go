@@ -39,7 +39,6 @@ func main() {
 		buffer := make([]byte, 1024)
 		_, r_addr, _ := conn.ReadFrom(buffer)
 		fmt.Printf("UDP message from %s\n", r_addr.String())
-		fmt.Printf("%s\n", string(buffer))
 
 		handleMsg(conn, r_addr, string(buffer))
 	}
@@ -76,6 +75,7 @@ func handleMsg(conn net.PacketConn, addr net.Addr, clientMsg string) {
 	requestData := strings.Split(tempStr, "|")[1]
 	time.Sleep(time.Millisecond * 1)
 
+	fmt.Printf("Command %d\n\n", requestOption)
 	switch requestOption {
 	case 1:
 		upperString := strings.ToUpper(requestData)
