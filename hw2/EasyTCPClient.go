@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var serverName string = "localhost"
+var serverName string = "nsl2.cau.ac.kr"
 var serverPort string = "26342"
 
 func main() {
