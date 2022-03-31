@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var serverName string = "nsl2.cau.ac.kr"
+var serverName string = "localhost"
 var serverPort string = "26342"
 
 func main() {
@@ -163,7 +163,13 @@ func sendPacket(conn net.Conn, requestString string) {
 }
 
 func readPacket(conn net.Conn, buffer *[]byte) {
-	conn.Read(*buffer)
+	_, err := conn.Read(*buffer)
+	if err != nil {
+		fmt.Println("connection is closed by server")
+		byebye()
+		conn.Close()
+		os.Exit(0)
+	}
 }
 
 func printOption() {
