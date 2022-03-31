@@ -1,4 +1,4 @@
-package hw2;
+package EasyTCPClient;
 
 import java.util.*;
 import java.io.DataOutputStream;
@@ -10,7 +10,7 @@ import java.net.UnknownHostException;
 
 public class EasyTCPClient {
 
-    final static String serverName = "localhost";
+    final static String serverName = "nsl2.cau.ac.kr";
     final static int serverPort = 26342;
 
     public static class ByeByeThread extends Thread{

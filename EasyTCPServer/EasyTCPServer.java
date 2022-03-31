@@ -1,4 +1,4 @@
-package hw2;
+package EasyTCPServer;
 
 import java.util.*;
 import java.io.DataInputStream;
@@ -9,14 +9,10 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.sql.Time;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 
-public class EasyUDPServer {
+public class EasyTCPServer {
     
     final public static int serverPort = 26342;
     public static int totalRequest = 0;
@@ -24,23 +20,29 @@ public class EasyUDPServer {
     public static void main(String args[]){
 
         startTime = new Date().getTime();
-        DatagramSocket conn = null;
+        ServerSocket listener = null;
+        Socket conn = null;
+        try{
+            listener = new ServerSocket(serverPort);
+
+        } catch(IOException e){
+
+        }
+        System.out.printf("Server is ready to receive on port %s\n", serverPort);
+        Runtime.getRuntime().addShutdownHook(new ByeByeThread(listener));
 
         try{
-            conn = new DatagramSocket(serverPort);
-        } catch(SocketException e){
-            System.out.println("maybe port is already used.."+serverPort);
-            System.exit(0);
+            while(true){
+                conn = listener.accept();
+                System.out.printf("Connection request from %s\n", conn.getInetAddress()+":"+conn.getPort());
+
+                ServerReceiver th = new ServerReceiver(conn);
+                th.start();
+            }
+
+        } catch(IOException e){
+            
         }
-
-        System.out.printf("Server is ready to receive on port %s\n", serverPort);
-        Runtime.getRuntime().addShutdownHook(new ByeByeThread(conn));
-
-
-        ServerReceiver th = new ServerReceiver(conn);
-        th.start();
-
-        
     }
 
     public static void byebye(){
@@ -92,10 +94,10 @@ public class EasyUDPServer {
     }
 
     public static class ByeByeThread extends Thread{
-        DatagramSocket conn;
+        ServerSocket listener;
 
-        ByeByeThread(DatagramSocket conn){
-            this.conn = conn;
+        ByeByeThread(ServerSocket listener){
+            this.listener = listener;
         }
 
         public void run() {
@@ -103,9 +105,11 @@ public class EasyUDPServer {
                 Thread.sleep(200);
                 byebye();
 
-               
-                this.conn.close();
-                
+                try{
+                    this.listener.close();
+                } catch(IOException e){
+
+                }
             
                 //some cleaning up code...
 
@@ -117,27 +121,36 @@ public class EasyUDPServer {
     }
 
     static class ServerReceiver extends Thread {
-        DatagramSocket conn;
-        
+        Socket conn;
+        DataInputStream is;
+        DataOutputStream os;
 
-        ServerReceiver(DatagramSocket conn){
+
+        ServerReceiver(Socket conn){
             this.conn = conn;
-            
+            try{
+                is = new DataInputStream(conn.getInputStream());
+                os = new DataOutputStream(conn.getOutputStream());
+            } catch(IOException e){
+                
+            }
         }
 
         public void run(){
             while(true){
                 try{
+                    int bufferSize = 1024;
+                    byte[] buffer = new byte[bufferSize];
 
-                    DatagramPacket buffer = new DatagramPacket(new byte[1024],1024);
-                    this.conn.receive(buffer);
+                    int count = is.read(buffer);
 
-                    System.out.printf("UDP message from %s\n", buffer.getAddress()+":"+buffer.getPort());
+                    if(count == -1){
+                        System.out.println("Client disconnected");
+                        break;
+                    }
 
-                    InetAddress clientAddress = buffer.getAddress();
-                    int clientPort = buffer.getPort();
-
-                    handleMsg(new String(buffer.getData()), clientAddress, clientPort);
+                    String clientMsg = new String(buffer, 0, count);
+                    handleMsg(clientMsg);
                 }catch(IOException e){
                     System.out.println("client is disconnected");
                     break;
@@ -146,7 +159,7 @@ public class EasyUDPServer {
             
         }
 
-        public void handleMsg(String msg, InetAddress addr, int port){
+        public void handleMsg(String msg){
             totalRequest++;
             String[] req = msg.split("\\|");
             int requestOption = Integer.parseInt( req[0] );
@@ -163,34 +176,42 @@ public class EasyUDPServer {
             
             switch(requestOption){
                 case 1:
-                    sendPacket(requestData.toUpperCase(), addr, port);
+                    sendPacket(requestData.toUpperCase());
                     break;
                 case 2:
-                    String ip = addr+":"+port;
-                    sendPacket(ip, addr, port);
+                    String ip = this.conn.getInetAddress()+":"+this.conn.getPort();
+                    sendPacket(ip);
                     break;
                 case 3:
-                    sendPacket(totalRequest+"", addr, port);
+                    sendPacket(totalRequest+"");
                     break;
                 case 4:
                     long elapsed = new Date().getTime() - startTime;
-                    sendPacket(milliToTimeFormat(elapsed)+"", addr, port);
+                    sendPacket(milliToTimeFormat(elapsed)+"");
                     break;
                 case 5:
-                    this.conn.close();
-                    this.stop();
+                    try{
+                        this.conn.close();
+                        this.stop();
+                    } catch(IOException e){
+
+                    }
                     break;
                 default:
-                    this.conn.close();
-                    this.stop();
+                    try{
+                        this.conn.close();
+                        this.stop();
+                    } catch(IOException e){
+
+                    }
                     break;
             }
         }
 
-        void sendPacket(String packet, InetAddress addr, int port){
+        void sendPacket(String packet){
             try{
-                DatagramPacket msg = new DatagramPacket(packet.getBytes(), packet.getBytes().length, addr, port);
-                this.conn.send(msg);
+                os.write(packet.getBytes());
+                os.flush();
             } catch(IOException e){
 
             }
