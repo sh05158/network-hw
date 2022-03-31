@@ -86,6 +86,7 @@ func handleMsg(conn net.Conn) {
 		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0])
 		requestData := strings.Split(tempStr, "|")[1]
 		time.Sleep(time.Millisecond * 1)
+		fmt.Printf("Command %d\n\n", requestOption)
 
 		switch requestOption {
 		case 1:

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var serverName string = "localhost"
+var serverName string = "nsl2.cau.ac.kr"
 var serverPort string = "26342"
 
 func main() {
@@ -75,8 +75,8 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 
 	startTime := time.Now()
 
-	var temp int
-	fmt.Scanf("%s", &temp)
+	// var temp int
+	// fmt.Scanf("%s", &temp)
 
 	switch opt {
 	case 1:
@@ -110,7 +110,6 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 		bufferSize := readPacket(conn, &buffer)
 		timeD, _ := time.ParseDuration(string(buffer[:bufferSize]))
 
-
 		printDuration(timeD)
 
 	case 5:
@@ -131,7 +130,7 @@ func printRTT(d time.Duration) {
 
 	s := d / time.Millisecond
 
-	fmt.Printf("RTT = %dms \n", s)
+	fmt.Printf("RTT = %dms \n\n\n", s)
 
 }
 func printDuration(d time.Duration) {
@@ -159,6 +158,7 @@ func readPacket(conn net.PacketConn, buffer *[]byte) int {
 }
 
 func printOption() {
+	fmt.Printf("<Menu>\n")
 	fmt.Printf("option 1) convert text to UPPER-case letters.\n")
 	fmt.Printf("option 2) ask the server what the IP address and port number of the client is.\n")
 	fmt.Printf("option 3) ask the server how many client requests(commands) it has served so far.\n")
