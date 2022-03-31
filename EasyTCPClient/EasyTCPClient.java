@@ -183,7 +183,7 @@ public class EasyTCPClient {
     }
 
     public static String readPacket(InputStream is){
-        byte[] data = new byte[16];
+        byte[] data = new byte[1024];
 
         try
         {

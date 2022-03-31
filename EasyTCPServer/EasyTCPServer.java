@@ -179,7 +179,7 @@ public class EasyTCPServer {
                     sendPacket(requestData.toUpperCase());
                     break;
                 case 2:
-                    String ip = this.conn.getInetAddress()+":"+this.conn.getPort();
+                    String ip = (this.conn.getInetAddress()+":"+this.conn.getPort());
                     sendPacket(ip);
                     break;
                 case 3:
