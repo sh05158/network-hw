@@ -102,6 +102,5 @@ func handleMsg(conn net.PacketConn, addr net.Addr, clientMsg string) {
 }
 
 func sendPacket(conn net.PacketConn, addr net.Addr, serverMsg string) {
-	fmt.Println("send Packet %s %s ", addr, serverMsg)
 	conn.WriteTo([]byte(serverMsg), addr)
 }

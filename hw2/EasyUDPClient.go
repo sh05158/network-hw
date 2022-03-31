@@ -9,15 +9,27 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
-var serverName string = "localhost"
+var serverName string = "nsl2.cau.ac.kr"
 var serverPort string = "26342"
 
 func main() {
+
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for sig := range c {
+			// sig is a ^C, handle it
+			_ = sig
+			byebye()
+		}
+	}()
 
 	conn, err := net.ListenPacket("udp", ":")
 
@@ -47,6 +59,11 @@ func main() {
 		handleInput(conn, server_addr)
 	}
 
+}
+
+func byebye() {
+	fmt.Printf("Bye bye~\n")
+	os.Exit(0)
 }
 
 func handleInput(conn net.PacketConn, addr *net.UDPAddr) {
@@ -104,9 +121,11 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 		fmt.Printf("Server started %s seconds ago\n", string(buffer))
 
 	case 5:
+		byebye()
 		conn.Close()
 		os.Exit(0)
 	default:
+		byebye()
 		conn.Close()
 		os.Exit(0)
 	}
