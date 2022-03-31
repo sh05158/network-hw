@@ -103,10 +103,8 @@ func handleMsg(conn net.Conn) {
 			sendPacket(conn, string(elapsed))
 		case 5:
 			conn.Close()
-			os.Exit(0)
 		default:
 			conn.Close()
-			os.Exit(0)
 		}
 	}
 

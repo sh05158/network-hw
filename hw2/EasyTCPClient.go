@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var serverName string = "nsl2.cau.ac.kr"
+var serverName string = "localhost"
 var serverPort string = "26342"
 
 func main() {
@@ -61,48 +61,6 @@ func handleInput(conn net.Conn) {
 	var opt int
 	fmt.Scanf("%d", &opt)
 	processOption(opt, conn)
-}
-
-func handleError(conn net.Conn, errmsg string) {
-	if conn != nil {
-		conn.Close()
-	}
-	fmt.Println(errmsg)
-}
-
-func handleSendMsg(conn net.Conn) {
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Text to send : ")
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			handleError(conn, "read input failed..")
-		}
-
-		fmt.Fprintf(conn, "%s|%s", text)
-	}
-}
-
-func handleRecvMsg(conn net.Conn, msgch chan string) {
-	for {
-		select {
-		case msg := <-msgch:
-			fmt.Printf("\nMessage from server : %s\n", msg)
-		default:
-			go recvFromServer(conn, msgch)
-			time.Sleep(1000 * time.Millisecond)
-		}
-	}
-}
-
-func recvFromServer(conn net.Conn, msgch chan string) {
-	msg, err := bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		handleError(conn, "read msg failed..")
-		os.Exit(2)
-		return
-	}
-	msgch <- msg
 }
 
 func processOption(opt int, conn net.Conn) {

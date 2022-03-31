@@ -93,10 +93,8 @@ func handleMsg(conn net.PacketConn, addr net.Addr, clientMsg string) {
 
 	case 5:
 		conn.Close()
-		os.Exit(0)
 	default:
 		conn.Close()
-		os.Exit(0)
 	}
 
 }
