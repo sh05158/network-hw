@@ -17,6 +17,7 @@ import (
 
 var totalRequests int = 0
 var startTime time.Time
+var serverPort string = "26342"
 
 func main() {
 	c := make(chan os.Signal, 2)
@@ -29,9 +30,7 @@ func main() {
 		}
 	}()
 
-	serverPort := "26342"
 	startTime = time.Now()
-
 	listener, _ := net.Listen("tcp", ":"+serverPort)
 	fmt.Printf("Server is ready to receive on port %s\n", serverPort)
 
@@ -72,7 +71,6 @@ func handleError2(conn net.Conn, errmsg string) {
 
 func handleMsg(conn net.Conn) {
 	for {
-		// fmt.Printf("start Handle Msg ")
 		buffer := make([]byte, 1024)
 
 		count, err := conn.Read(buffer)
@@ -84,51 +82,34 @@ func handleMsg(conn net.Conn) {
 		_ = count
 
 		totalRequests++
-
 		tempStr := string(buffer)
-
-		time.Sleep(time.Second * 3)
 		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0])
 		requestData := strings.Split(tempStr, "|")[1]
-
-		// fmt.Println(requestOption)
-		// fmt.Println(requestData)
+		time.Sleep(time.Millisecond * 1)
 
 		switch requestOption {
 		case 1:
-			// fmt.Printf("========11111======== ")
-
 			upperString := strings.ToUpper(requestData)
-			conn.Write([]byte(upperString))
-
+			sendPacket(conn,upperString)
 		case 2:
-			// fmt.Printf("========22222======== ")
-
 			ip := conn.RemoteAddr()
-			conn.Write([]byte(ip.String()))
-
+			sendPacket(conn, ip.String())
 		case 3:
-			// fmt.Printf("========33333======== ")
-
-			conn.Write([]byte(strconv.Itoa(totalRequests)))
-
+			sendPacket(conn, strconv.Itoa(totalRequests))
 		case 4:
-			// fmt.Printf("4444 ")
-
 			elapsed := time.Since(startTime).Truncate(time.Second).String()
-			conn.Write([]byte(string(elapsed)))
-
+			sendPacket(conn, string(elapsed))
 		case 5:
-			// fmt.Printf("5555 ")
 			conn.Close()
-
 			os.Exit(0)
 		default:
-			// fmt.Printf("default ")
 			conn.Close()
-
 			os.Exit(0)
 		}
 	}
 
+}
+
+func sendPacket(conn net.Conn, serverMsg string){
+	conn.Write([]byte(serverMsg))
 }

@@ -1,5 +1,5 @@
 /**
- * TCPClient.go
+ * EasyUDPClient.go
  **/
 
 package main
@@ -19,7 +19,7 @@ var serverPort string = "26342"
 
 func main() {
 
-	conn, err := net.Dial("tcp", serverName+":"+serverPort)
+	conn, err := net.ListenPacket("udp", ":")
 
 	if err != nil {
 		fmt.Printf("Please check your server is running\n")
@@ -27,68 +27,44 @@ func main() {
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.TCPAddr)
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	fmt.Printf("Client is running on port %d\n", localAddr.Port)
 
+	//  fmt.Printf("Input lowercase sentence: ")
+	//  input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+
+	server_addr, _ := net.ResolveUDPAddr("udp", serverName+":"+serverPort)
+	//  pconn.WriteTo([]byte(input), server_addr)
+
+	//  buffer := make([]byte, 1024)
+	//  pconn.ReadFrom(buffer)
+	//  fmt.Printf("Reply from server: %s", string(buffer))
+
+	//  pconn.Close()
+
 	for {
-		handleInput(conn)
+		handleInput(conn, server_addr)
 	}
 
-	// defer conn.Close()
 }
 
-func handleInput(conn net.Conn) {
+func handleInput(conn net.PacketConn, addr *net.UDPAddr) {
 	printOption()
 	fmt.Printf("Please select your option :")
 	var opt int
 	fmt.Scanf("%d", &opt)
-	processOption(opt, conn)
+	processOption(opt, conn, addr)
 }
 
-func handleError(conn net.Conn, errmsg string) {
+func handleError(conn net.PacketConn, errmsg string) {
 	if conn != nil {
 		conn.Close()
 	}
 	fmt.Println(errmsg)
 }
 
-func handleSendMsg(conn net.Conn) {
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Text to send : ")
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			handleError(conn, "read input failed..")
-		}
-
-		fmt.Fprintf(conn, "%s|%s", text)
-	}
-}
-
-func handleRecvMsg(conn net.Conn, msgch chan string) {
-	for {
-		select {
-		case msg := <-msgch:
-			fmt.Printf("\nMessage from server : %s\n", msg)
-		default:
-			go recvFromServer(conn, msgch)
-			time.Sleep(1000 * time.Millisecond)
-		}
-	}
-}
-
-func recvFromServer(conn net.Conn, msgch chan string) {
-	msg, err := bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		handleError(conn, "read msg failed..")
-		os.Exit(2)
-		return
-	}
-	msgch <- msg
-}
-
-func processOption(opt int, conn net.Conn) {
+func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 
 	startTime := time.Now()
 
@@ -101,28 +77,28 @@ func processOption(opt int, conn net.Conn) {
 		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		startTime = time.Now()
 		requestString := strconv.Itoa(opt) + "|" + input
-		sendPacket(conn, requestString)
+		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
 		readPacket(conn, &buffer)
 		fmt.Printf("Reply from server: %s\n", string(buffer))
 
 	case 2:
 		requestString := strconv.Itoa(opt) + "|"
-		sendPacket(conn, requestString)
+		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
 		readPacket(conn, &buffer)
 		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(string(buffer), ":")[0]), string(strings.Split(string(buffer), ":")[1]))
 
 	case 3:
 		requestString := strconv.Itoa(opt) + "|"
-		sendPacket(conn, requestString)
+		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
 		readPacket(conn, &buffer)
 		fmt.Printf("Total client request count = %s\n", string(buffer))
 
 	case 4:
 		requestString := strconv.Itoa(opt) + "|"
-		sendPacket(conn, requestString)
+		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
 		readPacket(conn, &buffer)
 		fmt.Printf("Server started %s seconds ago\n", string(buffer))
@@ -139,12 +115,12 @@ func processOption(opt int, conn net.Conn) {
 
 }
 
-func sendPacket(conn net.Conn, requestString string) {
-	conn.Write([]byte(requestString))
+func sendPacket(conn net.PacketConn, requestString string, addr *net.UDPAddr) {
+	conn.WriteTo([]byte(requestString), addr)
 }
 
-func readPacket(conn net.Conn, buffer *[]byte) {
-	conn.Read(*buffer)
+func readPacket(conn net.PacketConn, buffer *[]byte) {
+	conn.ReadFrom(*buffer)
 }
 
 func printOption() {
