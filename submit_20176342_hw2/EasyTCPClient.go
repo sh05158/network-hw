@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var serverName string = "nsl2.cau.ac.kr"
+var serverName string = "localhost"
 var serverPort string = "26342"
 
 func main() {
@@ -67,8 +67,8 @@ func processOption(opt int, conn net.Conn) {
 
 	startTime := time.Now()
 
-	// var temp int
-	// fmt.Scanf("%s", &temp)
+	var temp int
+	fmt.Scanf("%s", &temp)
 
 	switch opt {
 	case 1:

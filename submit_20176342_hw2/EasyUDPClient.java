@@ -1,4 +1,4 @@
-package EasyUDPClient;
+package submit_20176342_hw2;
 
 import java.util.*;
 import java.io.DataOutputStream;
