@@ -19,6 +19,8 @@ import (
 var serverName string = "localhost"
 var serverPort string = "26342"
 
+var lastRequestTime time.Time
+
 func main() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -43,11 +45,12 @@ func main() {
 
 	fmt.Printf("Client is running on port %d\n", localAddr.Port)
 
-	for {
-		handleInput(conn)
-	}
+	go handlePacket(conn)
+	handleInput(conn)
 
-	// defer conn.Close()
+	// select {}
+
+	defer conn.Close()
 }
 
 func byebye() {
@@ -55,17 +58,76 @@ func byebye() {
 	os.Exit(0)
 }
 
+func handlePacket(conn net.Conn) {
+	for {
+		buffer := make([]byte, 1024)
+		bufferSize := readPacket(conn, &buffer)
+
+		response := string(buffer[:bufferSize])
+
+		// fmt.Println(response)
+
+		route, _ := strconv.Atoi(strings.Split(response, "|")[0])
+
+		msgArr := strings.Split(response, "|")
+
+		switch route {
+		case 0: //내꺼
+			opt, _ := strconv.Atoi(msgArr[1])
+
+			processMyMessage(opt, msgArr[2])
+			break
+		case 1: //서버에서 일방적으로 보내준 패킷
+
+			fmt.Printf("%s\n", msgArr[1])
+			break
+
+		}
+	}
+
+}
+
+func processMyMessage(opt int, msg string) {
+	switch opt {
+	case 1:
+
+		fmt.Printf("Reply from server: %s\n", msg)
+		break
+	case 2:
+
+		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(msg, ":")[0]), string(strings.Split(msg, ":")[1]))
+		break
+
+	case 3:
+
+		fmt.Printf("Reply from server: requests served = %s\n", msg)
+		break
+
+	case 4:
+		timeD, _ := time.ParseDuration(msg)
+		printDuration(timeD)
+		break
+
+	}
+
+	printRTT(time.Since(lastRequestTime))
+}
+
 func handleInput(conn net.Conn) {
-	printOption()
-	fmt.Printf("Please select your option :")
-	var opt int
-	fmt.Scanf("%d", &opt)
-	processOption(opt, conn)
+	for {
+		time.Sleep(time.Millisecond * 100)
+		printOption()
+		fmt.Printf("Please select your option :")
+		var opt int
+		fmt.Scanf("%d", &opt)
+		processOption(opt, conn)
+	}
+
 }
 
 func processOption(opt int, conn net.Conn) {
 
-	startTime := time.Now()
+	lastRequestTime = time.Now()
 
 	var temp int
 	fmt.Scanf("%s", &temp)
@@ -74,35 +136,21 @@ func processOption(opt int, conn net.Conn) {
 	case 1:
 		fmt.Printf("Input lowercase sentence: ")
 		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		startTime = time.Now()
+		lastRequestTime = time.Now()
 		requestString := strconv.Itoa(opt) + "|" + input
 		sendPacket(conn, requestString)
-		buffer := make([]byte, 1024)
-		bufferSize := readPacket(conn, &buffer)
-		fmt.Printf("Reply from server: %s\n", string(buffer[:bufferSize]))
 
 	case 2:
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
-		buffer := make([]byte, 1024)
-		bufferSize := readPacket(conn, &buffer)
-		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(string(buffer[:bufferSize]), ":")[0]), string(strings.Split(string(buffer[:bufferSize]), ":")[1]))
 
 	case 3:
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
-		buffer := make([]byte, 1024)
-		bufferSize := readPacket(conn, &buffer)
-		fmt.Printf("Reply from server: requests served = %s\n", string(buffer[:bufferSize]))
 
 	case 4:
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
-		buffer := make([]byte, 1024)
-		bufferSize := readPacket(conn, &buffer)
-		timeD, _ := time.ParseDuration(string(buffer[:bufferSize]))
-
-		printDuration(timeD)
 
 	case 5:
 		byebye()
@@ -113,7 +161,7 @@ func processOption(opt int, conn net.Conn) {
 		conn.Close()
 		os.Exit(0)
 	}
-	printRTT(time.Since(startTime))
+	// printRTT(time.Since(lastRequestTime))
 
 }
 

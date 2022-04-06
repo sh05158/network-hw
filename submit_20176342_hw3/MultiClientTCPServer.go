@@ -18,6 +18,8 @@ import (
 var totalRequests int = 0
 var startTime time.Time
 var serverPort string = "26342"
+var uniqueID int = 1
+var clientMap map[int]net.Conn
 
 func main() {
 	c := make(chan os.Signal, 2)
@@ -34,6 +36,9 @@ func main() {
 	listener, _ := net.Listen("tcp", ":"+serverPort)
 	fmt.Printf("Server is ready to receive on port %s\n", serverPort)
 
+	clientMap = make(map[int]net.Conn)
+	go printClientNum()
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -42,11 +47,40 @@ func main() {
 
 		fmt.Printf("Connection request from %s\n", conn.RemoteAddr().String())
 
-		go handleMsg(conn)
+		registerClient(conn, uniqueID)
+		broadCastToAll(1, fmt.Sprintf("Client %d connected. Number of connected clients = %d", uniqueID, len(clientMap)))
+		go handleMsg(conn, uniqueID)
+		uniqueID++
+
 	}
 
 	defer byebye()
 
+}
+
+func printClientNum() {
+	for {
+		time.Sleep(time.Minute * 1)
+		fmt.Printf("Number of connected clients = %d\n", len(clientMap))
+	}
+}
+
+func broadCastToAll(route int, msg string) {
+	for _, v := range clientMap {
+		sendPacket(v, strconv.Itoa(route)+"|"+msg)
+	}
+	fmt.Println(msg)
+}
+
+func registerClient(conn net.Conn, uniqueID int) int {
+	clientMap[uniqueID] = conn
+	return uniqueID
+}
+
+func unregisterClient(uniqueID int) {
+	if clientMap[uniqueID] != nil {
+		delete(clientMap, uniqueID)
+	}
 }
 
 func byebye() {
@@ -59,22 +93,24 @@ func handleError(conn net.Conn, err error, errmsg string) {
 		conn.Close()
 	}
 	// fmt.Println(err)
-	fmt.Println(errmsg)
+	// fmt.Println(errmsg)
 }
 func handleError2(conn net.Conn, errmsg string) {
 	if conn != nil {
 		conn.Close()
 	}
 
-	fmt.Println(errmsg)
+	// fmt.Println(errmsg)
 }
 
-func handleMsg(conn net.Conn) {
+func handleMsg(conn net.Conn, cid int) {
 	for {
 		buffer := make([]byte, 1024)
 
 		count, err := conn.Read(buffer)
 		if err != nil {
+			unregisterClient(cid)
+			broadCastToAll(1, fmt.Sprintf("Client %d disconnected. Number of connected clients = %d", cid, len(clientMap)))
 			handleError(conn, err, "client disconnected!")
 			return
 		}
@@ -91,16 +127,16 @@ func handleMsg(conn net.Conn) {
 		switch requestOption {
 		case 1:
 			upperString := strings.ToUpper(requestData)
-			sendPacket(conn, upperString)
+			sendPacket(conn, "0|1|"+upperString)
 		case 2:
 			ip := conn.RemoteAddr()
-			sendPacket(conn, ip.String())
+			sendPacket(conn, "0|2|"+ip.String())
 		case 3:
-			sendPacket(conn, strconv.Itoa(totalRequests))
+			sendPacket(conn, "0|3|"+strconv.Itoa(totalRequests))
 		case 4:
 			elapsed := time.Since(startTime).Truncate(time.Second).String()
 
-			sendPacket(conn, string(elapsed))
+			sendPacket(conn, "0|4|"+string(elapsed))
 		case 5:
 			conn.Close()
 		default:
