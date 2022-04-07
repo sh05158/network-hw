@@ -1,3 +1,8 @@
+/**
+ * 20176342 Song Min Joon
+ * EasyTCPServer.java
+ **/
+
 package submit_20176342_hw2;
 
 import java.util.*;
@@ -13,105 +18,110 @@ import java.net.UnknownHostException;
 import java.sql.Time;
 
 public class EasyTCPServer {
-    
-    final public static int serverPort = 26342;
-    public static int totalRequest = 0;
-    public static long startTime;
-    public static void main(String args[]){
 
-        startTime = new Date().getTime();
+    final public static int serverPort = 26342;// for server port
+    public static int totalRequest = 0; // total Request count global variable for server.
+    public static long startTime;// for saving server start time
+
+    public static void main(String args[]) {
+
+        startTime = new Date().getTime(); //save server start time(curr time)
         ServerSocket listener = null;
         Socket conn = null;
-        try{
-            listener = new ServerSocket(serverPort);
+        try {
+            listener = new ServerSocket(serverPort); // create listener for tcp socket
 
-        } catch(IOException e){
+        } catch (IOException e) {
 
         }
         System.out.printf("Server is ready to receive on port %s\n", serverPort);
-        Runtime.getRuntime().addShutdownHook(new ByeByeThread(listener));
+        Runtime.getRuntime().addShutdownHook(new ByeByeThread(listener)); // shutdown hook for graceful exit
 
-        try{
-            while(true){
+        try {
+            while (true) {
+                // listener is waiting for tcp connection of clients.
                 conn = listener.accept();
-                System.out.printf("Connection request from %s\n", conn.getInetAddress()+":"+conn.getPort());
+                System.out.printf("Connection request from %s\n", conn.getInetAddress() + ":" + conn.getPort());
 
+                // when client is connect to server, make individual sub-thread to communicate
+                // each client.
                 ServerReceiver th = new ServerReceiver(conn);
                 th.start();
             }
 
-        } catch(IOException e){
-            
+        } catch (IOException e) {
+
         }
     }
 
-    public static void byebye(){
+    public static void byebye() {
+        // print bye bye~
         System.out.println("Bye bye~");
     }
 
-    public static String milliToTimeFormat(long ms){
-        int ss = (int)Math.floor(ms / 1000);
+    public static String milliToTimeFormat(long ms) {
+        // convert Date.now(millisecond) format to HH:MM:ss
+        int ss = (int) Math.floor(ms / 1000);
 
         String res = "";
 
         int h = ss / 60 / 60;
-        ss = ss - (h*60*60);
+        ss = ss - (h * 60 * 60);
 
         int m = ss / 60;
-        ss = ss - (m*60);
+        ss = ss - (m * 60);
 
         int s = ss;
 
-        if(h >= 1){
-            if(h < 10){
-                res += "0"+h;
+        if (h >= 1) {
+            if (h < 10) {
+                res += "0" + h;
             } else {
                 res += h;
             }
-            res+="h";
+            res += "h";
         }
 
-        if(m >= 1){
-            if(m < 10){
-                res += "0"+m;
+        if (m >= 1) {
+            if (m < 10) {
+                res += "0" + m;
             } else {
                 res += m;
             }
-            res+="m";
+            res += "m";
         }
 
-        if(s >= 1){
-            if(s < 10){
-                res += "0"+s;
+        if (s >= 1) {
+            if (s < 10) {
+                res += "0" + s;
             } else {
                 res += s;
             }
-            res+="s";
+            res += "s";
         }
 
         return res;
 
     }
 
-    public static class ByeByeThread extends Thread{
+    public static class ByeByeThread extends Thread {
+        // ByeBye Thread for graceful exit program.
         ServerSocket listener;
 
-        ByeByeThread(ServerSocket listener){
+        ByeByeThread(ServerSocket listener) {
             this.listener = listener;
         }
 
         public void run() {
             try {
                 Thread.sleep(200);
-                byebye();
+                byebye();//print bye bye~
 
-                try{
-                    this.listener.close();
-                } catch(IOException e){
+                try {
+                    this.listener.close(); // close listener
+                } catch (IOException e) {
 
                 }
-            
-                //some cleaning up code...
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -121,101 +131,128 @@ public class EasyTCPServer {
     }
 
     static class ServerReceiver extends Thread {
+        // ServerReceiver Thread for each client
         Socket conn;
         DataInputStream is;
         DataOutputStream os;
 
-
-        ServerReceiver(Socket conn){
+        ServerReceiver(Socket conn) {
             this.conn = conn;
-            try{
+            try {
                 is = new DataInputStream(conn.getInputStream());
                 os = new DataOutputStream(conn.getOutputStream());
-            } catch(IOException e){
-                
+            } catch (IOException e) {
+
             }
         }
 
-        public void run(){
-            while(true){
-                try{
+        public void run() {
+            while (true) {
+                try {
                     int bufferSize = 1024;
                     byte[] buffer = new byte[bufferSize];
 
                     int count = is.read(buffer);
 
-                    if(count == -1){
+                    if (count == -1) {
                         System.out.println("Client disconnected");
                         break;
                     }
 
+                    // read packet from server and handle message
                     String clientMsg = new String(buffer, 0, count);
+
                     handleMsg(clientMsg);
-                }catch(IOException e){
+
+                } catch (IOException e) {
                     System.out.println("client is disconnected");
                     break;
                 }
             }
-            
+
         }
 
-        public void handleMsg(String msg){
-            totalRequest++;
-            String[] req = msg.split("\\|");
-            int requestOption = Integer.parseInt( req[0] );
+        public void handleMsg(String msg) {
+            totalRequest++; // number of request is added
 
-            System.out.printf("Command %d\n\n\n",requestOption);
+            /*
+             * client packet form
+             * 
+             * (Option Number|Message)
+             * 
+             * 1|blah blah blah...
+             * 1|hello world!
+             * 
+             * 2| => message is not required
+             * 3| => message is not required
+             * 4| => message is not required
+             * 
+             * 5| => maybe not arrived??
+             * 
+             */
+
+            String[] req = msg.split("\\|"); // split client packet by '|' and takes option and convert to Integer.
+            int requestOption = Integer.parseInt(req[0]);
+
+            System.out.printf("Command %d\n\n\n", requestOption); // print Command #
 
             String requestData;
-            try{
-                requestData = req[1];
-                
-            } catch(ArrayIndexOutOfBoundsException e){
+            try {
+                requestData = req[1]; // get message parameter from packet.
+
+            } catch (ArrayIndexOutOfBoundsException e) {
                 requestData = "";
             }
-            
-            switch(requestOption){
+
+            switch (requestOption) {
                 case 1:
+                    // Option 1
                     sendPacket(requestData.toUpperCase());
                     break;
                 case 2:
-                    String ip = (this.conn.getInetAddress()+":"+this.conn.getPort());
+                    // Option 2
+                    String ip = (this.conn.getInetAddress() + ":" + this.conn.getPort());
                     sendPacket(ip);
                     break;
                 case 3:
-                    sendPacket(totalRequest+"");
+                    // Option 3
+                    sendPacket(totalRequest + "");
                     break;
                 case 4:
+                    // Option 4
                     long elapsed = new Date().getTime() - startTime;
-                    sendPacket(milliToTimeFormat(elapsed)+"");
+                    sendPacket(milliToTimeFormat(elapsed) + "");
                     break;
                 case 5:
-                    try{
+                    // Option 5
+                    try {
                         this.conn.close();
                         this.stop();
-                    } catch(IOException e){
+                    } catch (IOException e) {
 
                     }
                     break;
                 default:
-                    try{
+                    // Option default
+                    try {
                         this.conn.close();
                         this.stop();
-                    } catch(IOException e){
+                    } catch (IOException e) {
 
                     }
                     break;
             }
         }
 
-        void sendPacket(String packet){
-            try{
+        void sendPacket(String packet) {
+            // send packet to server
+            try {
                 os.write(packet.getBytes());
                 os.flush();
-            } catch(IOException e){
+            } catch (IOException e) {
 
             }
-            
+
         }
 
     }

@@ -1,4 +1,5 @@
 /**
+ * 20176342 Song Min Joon
  * EasyUDPClient.go
  **/
 
@@ -16,18 +17,17 @@ import (
 	"time"
 )
 
-var serverName string = "nsl2.cau.ac.kr"
-var serverPort string = "26342"
+var serverName string = "nsl2.cau.ac.kr" //server host
+var serverPort string = "26342"          //server port
 
 func main() {
 
 	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // for exit the program gracefully
 	go func() {
 		for sig := range c {
-			// sig is a ^C, handle it
 			_ = sig
-			byebye()
+			byebye() // print byebye func
 		}
 	}()
 
@@ -39,24 +39,29 @@ func main() {
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	localAddr := conn.LocalAddr().(*net.UDPAddr) // get local addr
 
 	fmt.Printf("Client is running on port %d\n", localAddr.Port)
 
-	server_addr, _ := net.ResolveUDPAddr("udp", serverName+":"+serverPort)
+	server_addr, _ := net.ResolveUDPAddr("udp", serverName+":"+serverPort) // make path for give and take packet with server
 
 	for {
+		//infinite loop for input option
 		handleInput(conn, server_addr)
 	}
 
 }
 
 func byebye() {
+	//print Bye bye
 	fmt.Printf("Bye bye~\n")
 	os.Exit(0)
 }
 
 func handleInput(conn net.PacketConn, addr *net.UDPAddr) {
+	/*
+		this function prints Menu and 5 Options and wait for input Option.
+	*/
 	printOption()
 	fmt.Printf("Please select your option :")
 	var opt int
@@ -72,14 +77,18 @@ func handleError(conn net.PacketConn, errmsg string) {
 }
 
 func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
-
-	startTime := time.Now()
+	/*
+		if option is given, it sends packet to server and get response.
+	*/
+	startTime := time.Now() //startTime for print RTT
 
 	// var temp int
 	// fmt.Scanf("%s", &temp)
 
 	switch opt {
 	case 1:
+		// Option 1
+
 		fmt.Printf("Input lowercase sentence: ")
 		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		startTime = time.Now()
@@ -90,6 +99,8 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 		fmt.Printf("Reply from server: %s\n", string(buffer[:bufferSize]))
 
 	case 2:
+		// Option 2
+
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
@@ -97,6 +108,8 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(string(buffer[:bufferSize]), ":")[0]), string(strings.Split(string(buffer[:bufferSize]), ":")[1]))
 
 	case 3:
+		// Option 3
+
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
@@ -104,6 +117,8 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 		fmt.Printf("Reply from server: requests served = %s \n", string(buffer[:bufferSize]))
 
 	case 4:
+		// Option 4
+
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString, addr)
 		buffer := make([]byte, 1024)
@@ -113,19 +128,25 @@ func processOption(opt int, conn net.PacketConn, addr *net.UDPAddr) {
 		printDuration(timeD)
 
 	case 5:
+		// Option 5
+
 		byebye()
 		conn.Close()
 		os.Exit(0)
 	default:
+		// not Option 1~5 (default)
+
 		byebye()
 		conn.Close()
 		os.Exit(0)
 	}
-	printRTT(time.Since(startTime))
+	printRTT(time.Since(startTime))// print RTT Since startTime
 
 }
 
 func printRTT(d time.Duration) {
+	//print RTT Time between before send packet and after send packet in Milliseconds.
+
 	d = d.Round(time.Millisecond)
 
 	s := d / time.Millisecond
@@ -134,6 +155,8 @@ func printRTT(d time.Duration) {
 
 }
 func printDuration(d time.Duration) {
+	//print server running time in proper form(HH:MM:ss)
+
 	d = d.Round(time.Second)
 
 	h := d / time.Hour
@@ -149,15 +172,23 @@ func printDuration(d time.Duration) {
 }
 
 func sendPacket(conn net.PacketConn, requestString string, addr *net.UDPAddr) {
+	//send Packet to server
+
 	conn.WriteTo([]byte(requestString), addr)
 }
 
 func readPacket(conn net.PacketConn, buffer *[]byte) int {
+	//read Packet from server and saves to buffer and return buffer size.
+
+	//There is no way to connection is established succesfully or connection is disconnect
+	//cause there is no connection in UDP
 	count, _, _ := conn.ReadFrom(*buffer)
 	return count
 }
 
 func printOption() {
+	//print Menu and 5 Options.
+
 	fmt.Printf("<Menu>\n")
 	fmt.Printf("option 1) convert text to UPPER-case letters.\n")
 	fmt.Printf("option 2) ask the server what the IP address and port number of the client is.\n")
