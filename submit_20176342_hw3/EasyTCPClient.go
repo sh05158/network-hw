@@ -1,5 +1,6 @@
 /**
- * TCPClient.go
+ * 20176342 Song Min Joon
+ * EasyTCPClient.go
  **/
 
 package main
@@ -16,32 +17,33 @@ import (
 	"time"
 )
 
-var serverName string = "localhost"
-var serverPort string = "26342"
+var serverName string = "nsl2.cau.ac.kr"//server host
+var serverPort string = "26342"//server port
 
 var lastRequestTime time.Time
 
 func main() {
 	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)// for exit the program gracefully
 	go func() {
 		for sig := range c {
 			// sig is a ^C, handle it
 			_ = sig
-			byebye()
+			byebye() // print byebye func
 		}
 	}()
 
-	conn, err := net.Dial("tcp", serverName+":"+serverPort)
+	conn, err := net.Dial("tcp", serverName+":"+serverPort)//tcp connection
 
 	if err != nil {
+				//if server is not working, print and exit
 		fmt.Printf("Please check your server is running\n")
 		byebye()
 		return
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.TCPAddr)
+	localAddr := conn.LocalAddr().(*net.TCPAddr)//get local port
 
 	fmt.Printf("Client is running on port %d\n", localAddr.Port)
 
@@ -50,7 +52,7 @@ func main() {
 
 	// select {}
 
-	defer conn.Close()
+	defer conn.Close()// although when client gets panic, defer should disconnect socket gracefully
 }
 
 func byebye() {
@@ -71,13 +73,31 @@ func handlePacket(conn net.Conn) {
 
 		msgArr := strings.Split(response, "|")
 
+		/*
+			server packet form
+
+			(Route|Option Number|Message) client request packet 
+			(Route|Message) server one sided packet 
+
+			0|1|BLAH BLAH BLAH...
+			0|1|HELLO WORLD!
+
+			0|2|127.0.0.1:6342    //my ip and port
+			0|3|30 				  //count of server serves client requests
+			0|4|01h30m12s		  //server running time 
+
+			1|client #3 is connected   //server broadcast message (server one-sided)
+			1|client #2 is disconnected   //server broadcast message (server one-sided)
+
+		*/
+
 		switch route {
-		case 0: //내꺼
+		case 0: // route 0 is packet that related to client request
 			opt, _ := strconv.Atoi(msgArr[1])
 
 			processMyMessage(opt, msgArr[2])
 			break
-		case 1: //서버에서 일방적으로 보내준 패킷
+		case 1: // route 1 is packet that is not related to client request (server one-sided packet)
 
 			fmt.Printf("%s\n", msgArr[1])
 			break
@@ -88,24 +108,27 @@ func handlePacket(conn net.Conn) {
 }
 
 func processMyMessage(opt int, msg string) {
+	//if i request server with option n, then process received packet with n
+	
 	switch opt {
 	case 1:
-
+		//if i request option number 1
 		fmt.Printf("Reply from server: %s\n", msg)
 		break
 	case 2:
-
+		//if i request option number 2
 		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(msg, ":")[0]), string(strings.Split(msg, ":")[1]))
 		break
 
 	case 3:
-
-		fmt.Printf("Reply from server: requests served = %s\n", msg)
+		//if i request option number 3
+		fmt.Printf("Reply from server: requests served = %s\n", msg)//print server message directly
 		break
 
 	case 4:
+		//if i request option number 4
 		timeD, _ := time.ParseDuration(msg)
-		printDuration(timeD)
+		printDuration(timeD) // print server running time 
 		break
 
 	}
@@ -126,37 +149,45 @@ func handleInput(conn net.Conn) {
 }
 
 func processOption(opt int, conn net.Conn) {
+	/*
+		if option is given, it sends packet to server and get response.
+	*/
+	lastRequestTime = time.Now() //startTime for print RTT
 
-	lastRequestTime = time.Now()
-
-	var temp int
-	fmt.Scanf("%s", &temp)
+	// var temp int
+	// fmt.Scanf("%s", &temp)
 
 	switch opt {
 	case 1:
+		//if my option is 1
 		fmt.Printf("Input lowercase sentence: ")
 		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		lastRequestTime = time.Now()
 		requestString := strconv.Itoa(opt) + "|" + input
 		sendPacket(conn, requestString)
-
+		//send packet 
 	case 2:
+		// Option 2
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
 
 	case 3:
+		// Option 3
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
 
 	case 4:
+		// Option 4
 		requestString := strconv.Itoa(opt) + "|"
 		sendPacket(conn, requestString)
 
 	case 5:
+		// Option 5
 		byebye()
 		conn.Close()
 		os.Exit(0)
 	default:
+		// not Option 1~5 (default)
 		byebye()
 		conn.Close()
 		os.Exit(0)
@@ -170,10 +201,12 @@ func printRTT(d time.Duration) {
 
 	s := d / time.Millisecond
 
-	fmt.Printf("RTT = %dms \n\n\n", s)
+	fmt.Printf("RTT = %dms \n\n\n", s) // print RTT Since startTime
 
 }
 func printDuration(d time.Duration) {
+	//print server running time in proper form(HH:MM:ss)
+
 	d = d.Round(time.Second)
 
 	h := d / time.Hour
@@ -189,10 +222,12 @@ func printDuration(d time.Duration) {
 }
 
 func sendPacket(conn net.Conn, requestString string) {
+	//send Packet to server
 	conn.Write([]byte(requestString))
 }
 
 func readPacket(conn net.Conn, buffer *[]byte) int {
+	//read Packet from server and saves to buffer and return buffer size.
 	count, err := conn.Read(*buffer)
 	if err != nil {
 		fmt.Println("connection is closed by server")
@@ -204,6 +239,7 @@ func readPacket(conn net.Conn, buffer *[]byte) int {
 }
 
 func printOption() {
+	//print Menu and 5 Options.
 	fmt.Printf("<Menu>\n")
 	fmt.Printf("option 1) convert text to UPPER-case letters.\n")
 	fmt.Printf("option 2) ask the server what the IP address and port number of the client is.\n")

@@ -1,7 +1,7 @@
 /**
- * TCPServer.go
+ * 20176342 Song Min Joon
+ * MultiClientTCPServer.go
  **/
-
 package main
 
 import (
@@ -15,31 +15,32 @@ import (
 	"time"
 )
 
-var totalRequests int = 0
-var startTime time.Time
-var serverPort string = "26342"
+var totalRequests int = 0		// total Request count global variable for server.
+var startTime time.Time			 // for saving server start time
+var serverPort string = "26342"  // for server port
 var uniqueID int = 1
 var clientMap map[int]net.Conn
 
 func main() {
 	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // for exit the program gracefully
 	go func() {
 		for sig := range c {
 			// sig is a ^C, handle it
 			_ = sig
-			byebye()
+			byebye()// if this program is interrupt by Ctrl-c, print Bye bye and exits gracefully
 		}
 	}()
 
-	startTime = time.Now()
+	startTime = time.Now()// records server start time for server running time
 	listener, _ := net.Listen("tcp", ":"+serverPort)
 	fmt.Printf("Server is ready to receive on port %s\n", serverPort)
 
-	clientMap = make(map[int]net.Conn)
+	clientMap = make(map[int]net.Conn) //make client map for record clients 
 	go printClientNum()
 
 	for {
+		//listener is waiting for tcp connection of clients.
 		conn, err := listener.Accept()
 		if err != nil {
 			handleError(conn, err, "server accept error..")
@@ -49,12 +50,12 @@ func main() {
 
 		registerClient(conn, uniqueID)
 		broadCastToAll(1, fmt.Sprintf("Client %d connected. Number of connected clients = %d", uniqueID, len(clientMap)))
-		go handleMsg(conn, uniqueID)
+		go handleMsg(conn, uniqueID) // when client is connect to server, make go-routine to communicate with client.
 		uniqueID++
 
 	}
 
-	defer byebye()
+	defer byebye() // although when client gets panic, defer should disconnect socket gracefully
 
 }
 
@@ -89,6 +90,7 @@ func byebye() {
 }
 
 func handleError(conn net.Conn, err error, errmsg string) {
+		//handle error and print
 	if conn != nil {
 		conn.Close()
 	}
@@ -96,6 +98,7 @@ func handleError(conn net.Conn, err error, errmsg string) {
 	// fmt.Println(errmsg)
 }
 func handleError2(conn net.Conn, errmsg string) {
+		//handle error and print
 	if conn != nil {
 		conn.Close()
 	}
@@ -108,7 +111,9 @@ func handleMsg(conn net.Conn, cid int) {
 		buffer := make([]byte, 1024)
 
 		count, err := conn.Read(buffer)
-		fmt.Printf("count = %d\n", count)
+		// fmt.Printf("count = %d\n", count)
+
+		//when client sends packet
 
 		if err != nil {
 			unregisterClient(cid)
@@ -118,38 +123,66 @@ func handleMsg(conn net.Conn, cid int) {
 		}
 
 		if count == 0 {
-			fmt.Printf("return ! \n")
+			// fmt.Printf("return ! \n")
 			return
 		}
 
 		_ = count
 
 		totalRequests++
+
+		/*
+			client packet form
+
+			(Option Number|Message)
+
+			1|blah blah blah...
+			1|hello world!
+
+			2|     => message is not required
+			3|     => message is not required
+			4|     => message is not required
+
+			5|     => maybe not arrived??
+
+		*/
+
 		tempStr := string(buffer)
 
-		fmt.Printf("client msg %s\n", tempStr)
+		// fmt.Printf("client msg %s\n", tempStr)
 
-		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0])
-		requestData := strings.Split(tempStr, "|")[1]
-		time.Sleep(time.Millisecond * 1)
-		fmt.Printf("Command %d\n\n", requestOption)
+		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0])// split client packet by '|' and takes option and convert to Integer.
+		requestData := strings.Split(tempStr, "|")[1]// get message parameter from packet.
+		time.Sleep(time.Millisecond * 1)// minimum delay to deliver packet to client.
+		fmt.Printf("Command %d\n\n", requestOption)// print Command #
 
 		switch requestOption {
 		case 1:
+			//Option 1
 			upperString := strings.ToUpper(requestData)
 			sendPacket(conn, "0|1|"+upperString)
 		case 2:
+			//Option 2
+
 			ip := conn.RemoteAddr()
 			sendPacket(conn, "0|2|"+ip.String())
 		case 3:
+			//Option 3
+
 			sendPacket(conn, "0|3|"+strconv.Itoa(totalRequests))
 		case 4:
+			//Option 4
+
 			elapsed := time.Since(startTime).Truncate(time.Second).String()
 
 			sendPacket(conn, "0|4|"+string(elapsed))
 		case 5:
+			//Option 5
+
 			conn.Close()
 		default:
+			//Option default
+
 			conn.Close()
 		}
 	}
@@ -157,5 +190,7 @@ func handleMsg(conn net.Conn, cid int) {
 }
 
 func sendPacket(conn net.Conn, serverMsg string) {
+	//send packet to client
+
 	conn.Write([]byte(serverMsg))
 }
