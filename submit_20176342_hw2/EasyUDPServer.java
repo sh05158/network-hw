@@ -3,8 +3,6 @@
  * EasyUDPServer.java
  **/
 
-package submit_20176342_hw2;
-
 import java.util.*;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

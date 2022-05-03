@@ -108,6 +108,8 @@ func handleMsg(conn net.Conn, cid int) {
 		buffer := make([]byte, 1024)
 
 		count, err := conn.Read(buffer)
+		fmt.Printf("count = %d\n", count)
+
 		if err != nil {
 			unregisterClient(cid)
 			broadCastToAll(1, fmt.Sprintf("Client %d disconnected. Number of connected clients = %d", cid, len(clientMap)))
@@ -115,10 +117,18 @@ func handleMsg(conn net.Conn, cid int) {
 			return
 		}
 
+		if count == 0 {
+			fmt.Printf("return ! \n")
+			return
+		}
+
 		_ = count
 
 		totalRequests++
 		tempStr := string(buffer)
+
+		fmt.Printf("client msg %s\n", tempStr)
+
 		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0])
 		requestData := strings.Split(tempStr, "|")[1]
 		time.Sleep(time.Millisecond * 1)
