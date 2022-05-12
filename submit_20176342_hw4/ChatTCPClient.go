@@ -6,6 +6,7 @@
 package main
 
 import (
+	// "bufio"
 	"bufio"
 	"fmt"
 	"net"
@@ -62,13 +63,16 @@ func main() {
 
 	fmt.Printf("Client is running on port %d\n", localAddr.Port)
 
-	sendPacket(conn, nickname)// send nickname to server and wait for response
+	sendPacket(conn, nickname) // send nickname to server and wait for response
 	buffer := make([]byte, 1024)
 	bufferSize := readPacket(conn, &buffer)
 	response := string(buffer[:bufferSize]) //wait for nickname response
 
 	if response == "duplicated" {
-		
+		fmt.Printf("your nickname %s is duplicated. please use another nickname\n")
+		byebye()
+		conn.Close()
+		os.Exit(0)
 	}
 
 	go handlePacket(conn)
@@ -90,8 +94,8 @@ func handlePacket(conn net.Conn) {
 		bufferSize := readPacket(conn, &buffer)
 
 		response := string(buffer[:bufferSize])
-
-		// fmt.Println(response)
+		fmt.Printf("handle Packet\n")
+		fmt.Printf("server send : %s\n", response)
 
 		route, _ := strconv.Atoi(strings.Split(response, "|")[0])
 
@@ -103,26 +107,47 @@ func handlePacket(conn net.Conn) {
 			(Route|Option Number|Message) client request packet
 			(Route|Message) server one sided packet
 
-			0|1|BLAH BLAH BLAH...
-			0|1|HELLO WORLD!
-
-			0|2|127.0.0.1:6342    //my ip and port
-			0|3|30 				  //count of server serves client requests
-			0|4|01h30m12s		  //server running time
-
-			1|client #3 is connected   //server broadcast message (server one-sided)
-			1|client #2 is disconnected   //server broadcast message (server one-sided)
+			Route 0 => normal message 0|nickname|message
+			Route 1 => list   just print server message 1|message
+			Route 2 => dm     message 2|nickname|message
+			Route 3 => disconnect  message 3|
+			Route 4 => show version 4|message(Version)
+			Route 5 => show rtt 5|message(rtt)
+			Route 6 => show message 6|message(disconnected)
 
 		*/
 
 		switch route {
-		case 0: // route 0 is packet that related to client request
-			opt, _ := strconv.Atoi(msgArr[1])
+		case 0: // route 0 is normal message packet
+			// fromNickname := msgArr[1]
+			// fromMessage := msgArr[2]
 
-			processMyMessage(opt, msgArr[2])
+			fmt.Printf("%s\n", msgArr[1])
+			break
+		case 2:
+			//print dm
+			fromNickname := msgArr[1]
+			fromMessage := msgArr[2]
+
+			fmt.Printf("from: %s>%s\n", fromNickname, fromMessage)
+			break
+		case 3:
+			//disconnect, do nothing
+			break
+		case 4:
+			//print version string
+			fmt.Printf("%s\n", msgArr[1])
+			break
+		case 5:
+			//print RTT
+			printRTT(time.Since(lastRequestTime))
 			break
 		case 1: // route 1 is packet that is not related to client request (server one-sided packet)
-
+			//print list of users< nickname, IP, port >
+			fmt.Printf("%s\n", msgArr[1])
+			break
+		case 6:
+			//server another user disconnect message
 			fmt.Printf("%s\n", msgArr[1])
 			break
 
@@ -131,92 +156,119 @@ func handlePacket(conn net.Conn) {
 
 }
 
-func processMyMessage(opt int, msg string) {
-	//if i request server with option n, then process received packet with n
+// func processMyMessage(opt int, msg string) {
+// 	//if i request server with option n, then process received packet with n
 
-	switch opt {
-	case 1:
-		//if i request option number 1
-		fmt.Printf("Reply from server: %s\n", msg)
-		break
-	case 2:
-		//if i request option number 2
-		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(msg, ":")[0]), string(strings.Split(msg, ":")[1]))
-		break
+// 	switch opt {
+// 	case 1:
+// 		//if i request option number 1
+// 		fmt.Printf("Reply from server: %s\n", msg)
+// 		break
+// 	case 2:
+// 		//if i request option number 2
+// 		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(msg, ":")[0]), string(strings.Split(msg, ":")[1]))
+// 		break
 
-	case 3:
-		//if i request option number 3
-		fmt.Printf("Reply from server: requests served = %s\n", msg) //print server message directly
-		break
+// 	case 3:
+// 		//if i request option number 3
+// 		fmt.Printf("Reply from server: requests served = %s\n", msg) //print server message directly
+// 		break
 
-	case 4:
-		//if i request option number 4
-		timeD, _ := time.ParseDuration(msg)
-		printDuration(timeD) // print server running time
-		break
+// 	case 4:
+// 		//if i request option number 4
+// 		timeD, _ := time.ParseDuration(msg)
+// 		printDuration(timeD) // print server running time
+// 		break
 
-	}
+// 	}
 
-	printRTT(time.Since(lastRequestTime))
-}
+// 	printRTT(time.Since(lastRequestTime))
+// }
 
 func handleInput(conn net.Conn) {
 	for {
 		time.Sleep(time.Millisecond * 100)
-		printOption()
-		fmt.Printf("Please select your option :")
-		var opt int
-		fmt.Scanf("%d", &opt)
-		processOption(opt, conn)
+		// var inputstr string
+
+		inputstr, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+
+		inputstr = inputstr[:len(inputstr)-1]
+
+		processMyMessage(inputstr, conn)
 	}
 
 }
+func processCommandOption(command string, arguments string, conn net.Conn) {
+	fmt.Printf("processCommmandOption 1%s1 %s \n", command, arguments)
+	requestString := "2|"
+	if command == "ver" {
+		fmt.Printf("command\n")
 
-func processOption(opt int, conn net.Conn) {
+	}
+	switch command {
+	case "list":
+		//if user command is list
+		requestString += "1|"
+		sendPacket(conn, requestString)
+
+	case "dm":
+		//if user command is dm
+		toNickname := strings.Split(arguments, " ")[0]
+		toMessage := strings.Split(arguments, " ")[1]
+		requestString += "2|" + toNickname + "|" + toMessage
+		sendPacket(conn, requestString)
+
+	case "exit":
+		//if user command is exit
+		requestString += "3|"
+		sendPacket(conn, requestString)
+
+	case "ver":
+		//if user command is ver
+		fmt.Printf("ver \n")
+		requestString += "4|"
+		sendPacket(conn, requestString)
+
+	case "rtt":
+		//if user command is rtt
+		lastRequestTime = time.Now() //startTime for print RTT
+		requestString += "5|"
+		sendPacket(conn, requestString)
+	}
+}
+func processMyMessage(inputstr string, conn net.Conn) {
 	/*
 		if option is given, it sends packet to server and get response.
 	*/
-	lastRequestTime = time.Now() //startTime for print RTT
 
 	// var temp int
 	// fmt.Scanf("%s", &temp)
 
-	switch opt {
-	case 1:
-		//if my option is 1
-		fmt.Printf("Input lowercase sentence: ")
-		input, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-		lastRequestTime = time.Now()
-		requestString := strconv.Itoa(opt) + "|" + input
+	lastRequestTime = time.Now() //startTime for print RTT
+
+	if inputstr[:1] == "\\" {
+		//if user input string is command
+		command := ""
+		arguments := ""
+
+		if strings.Contains(inputstr, " ") == true {
+			command = strings.Split(strings.Split(inputstr, " ")[0], "\\")[1]
+			arguments = strings.Split(inputstr, " ")[1]
+
+		} else {
+			//if no space
+			command = strings.Split(inputstr, "\\")[1]
+		}
+
+		processCommandOption(command, arguments, conn)
+
+	} else {
+		//is not command, just send normal message
+		requestString := "1|" + inputstr
 		sendPacket(conn, requestString)
 		//send packet
-	case 2:
-		// Option 2
-		requestString := strconv.Itoa(opt) + "|"
-		sendPacket(conn, requestString)
 
-	case 3:
-		// Option 3
-		requestString := strconv.Itoa(opt) + "|"
-		sendPacket(conn, requestString)
-
-	case 4:
-		// Option 4
-		requestString := strconv.Itoa(opt) + "|"
-		sendPacket(conn, requestString)
-
-	case 5:
-		// Option 5
-		byebye()
-		conn.Close()
-		os.Exit(0)
-	default:
-		// not Option 1~5 (default)
-		byebye()
-		conn.Close()
-		os.Exit(0)
 	}
-	// printRTT(time.Since(lastRequestTime))
 
 }
 

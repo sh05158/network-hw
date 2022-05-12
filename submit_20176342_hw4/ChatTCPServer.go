@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -15,19 +16,20 @@ import (
 	"time"
 )
 
-var totalRequests int = 0		// total Request count global variable for server.
-var startTime time.Time			 // for saving server start time
-var serverPort string = "26342"  // for server port
+var totalRequests int = 0       // total Request count global variable for server.
+var startTime time.Time         // for saving server start time
+var serverPort string = "26342" // for server port
 var uniqueID int = 1
 var clientMap map[int]client
 
-type client struct{
+type client struct {
 	nickname string
 	uniqueID int
-	conn net.Conn
-	ip string
-	port string
+	conn     net.Conn
+	ip       string
+	port     string
 }
+
 func main() {
 	c := make(chan os.Signal, 2)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // for exit the program gracefully
@@ -35,15 +37,15 @@ func main() {
 		for sig := range c {
 			// sig is a ^C, handle it
 			_ = sig
-			byebye()// if this program is interrupt by Ctrl-c, print Bye bye and exits gracefully
+			byebye() // if this program is interrupt by Ctrl-c, print Bye bye and exits gracefully
 		}
 	}()
 
-	startTime = time.Now()// records server start time for server running time
+	startTime = time.Now() // records server start time for server running time
 	listener, _ := net.Listen("tcp", ":"+serverPort)
 	fmt.Printf("Server is ready to receive on port %s\n", serverPort)
 
-	clientMap = make(map[int]client) //make client map for record clients 
+	clientMap = make(map[int]client) //make client map for record clients
 
 	for {
 		//listener is waiting for tcp connection of clients.
@@ -59,7 +61,7 @@ func main() {
 		count, err := conn.Read(nickBuffer)
 
 		if err != nil || count == 0 {
-			continue;
+			continue
 			return
 		}
 
@@ -67,22 +69,21 @@ func main() {
 
 		_, isDuplicate := getClientByNickname(targetNick)
 
+		newIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
+		newPort := strings.Split(conn.RemoteAddr().String(), ":")[1]
+
+		newClient := client{targetNick, uniqueID, conn, newIP, newPort}
+
 		if isDuplicate {
-			sendPacket(conn, "duplicated")
+			sendPacket(newClient, "duplicated")
 			conn.Close()
 			continue
 		}
 
-		sendPacket(conn, "duplicated")
-
-
-		newIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
-		newPort := strings.Split(conn.RemoteAddr().String(), ":")[1]
-
-		newClient := client{targetNick, uniqueID, conn, newIP, newPort }
+		sendPacket(newClient, "success")
 
 		registerClient(newClient, uniqueID)
-		
+
 		broadCastToAll(1, fmt.Sprintf("Client %d connected. Number of connected clients = %d", uniqueID, len(clientMap)))
 		go handleMsg(newClient, uniqueID) // when client is connect to server, make go-routine to communicate with client.
 		uniqueID++
@@ -93,9 +94,9 @@ func main() {
 
 }
 
-func getClientByNickname(nick string)( client, bool) {
+func getClientByNickname(nick string) (client, bool) {
 	for _, v := range clientMap {
-		if v.nickname == nick{
+		if v.nickname == nick {
 			return v, true
 		}
 	}
@@ -111,21 +112,22 @@ func printClientNum() {
 
 func broadCastToAll(route int, msg string) {
 	for _, v := range clientMap {
-		sendPacket(v.conn, strconv.Itoa(route)+"|"+msg)
+		sendPacket(v, strconv.Itoa(route)+"|"+msg)
 	}
-	fmt.Println(msg)
+	// fmt.Println(msg)
 }
 
 func broadCastExceptMe(route int, msg string, client client) {
 	for _, v := range clientMap {
-		if client.uniqueID != v.uniqueID{
+		if client.uniqueID != v.uniqueID {
 			//do not send to myself
-			sendPacket(v.conn, strconv.Itoa(route)+"|"+msg)
+			broadCastStr := strconv.Itoa(route) + "|" + msg
+			fmt.Printf("broadcast msg : %s send to %s\n", broadCastStr, v.nickname)
+			sendPacket(v, broadCastStr)
 		}
 	}
-	fmt.Println(msg)
+	// fmt.Println(msg)
 }
-
 
 func registerClient(client client, uniqueID int) int {
 	clientMap[uniqueID] = client
@@ -133,7 +135,7 @@ func registerClient(client client, uniqueID int) int {
 }
 
 func unregisterClient(uniqueID int) {
-	if _, ok := clientMap[uniqueID];ok {
+	if _, ok := clientMap[uniqueID]; ok {
 		delete(clientMap, uniqueID)
 	}
 }
@@ -144,7 +146,7 @@ func byebye() {
 }
 
 func handleError(conn net.Conn, err error, errmsg string) {
-		//handle error and print
+	//handle error and print
 	if conn != nil {
 		conn.Close()
 	}
@@ -152,7 +154,7 @@ func handleError(conn net.Conn, err error, errmsg string) {
 	// fmt.Println(errmsg)
 }
 func handleError2(conn net.Conn, errmsg string) {
-		//handle error and print
+	//handle error and print
 	if conn != nil {
 		conn.Close()
 	}
@@ -209,34 +211,45 @@ func handleMsg(client client, cid int) {
 		tempStr := string(buffer)
 
 		if strings.Contains(strings.ToUpper(tempStr), "I HATE PROFESSOR") {
-			//if client message includes 'i hate professor' disconnect socket 
+			//if client message includes 'i hate professor' disconnect socket
 			client.conn.Close()
 			unregisterClient(client.uniqueID)
 			broadCastToAll(6, fmt.Sprintf("Client %d disconnected. Number of connected clients = %d", cid, len(clientMap)))
-			sendPacket(client.conn, "5|")
+			sendPacket(client, "5|")
 		}
 
-		// fmt.Printf("client msg %s\n", tempStr)
+		fmt.Printf("%s client msg %s\n", client.nickname, tempStr)
 
-		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0])// split client packet by '|' and takes option and convert to Integer.
+		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0]) // split client packet by '|' and takes option and convert to Integer.
 
 		// requestData := strings.Split(tempStr, "|")[1]// get message parameter from packet.
-		time.Sleep(time.Millisecond * 1)// minimum delay to deliver packet to client.
+		time.Sleep(time.Millisecond * 1) // minimum delay to deliver packet to client.
 		// fmt.Printf("Command %d\n\n", requestOption)// print Command #
 
 		switch requestOption {
-		case 0:
+		case 1:
 			//  is not command (normal message)
 			message := strings.Split(tempStr, "|")[1]
+			// message.Write()
+			// formatMessage := fmt.Sprintf("%s> %s", client.nickname, message)
 
-			broadCastExceptMe(0, client.nickname+"> "+message, client)
-		case 1:
+			var b bytes.Buffer
+  			b.WriteString(client.nickname)
+			b.WriteString(" >")
+			b.WriteString(message)
+
+
+			broadCastExceptMe(0, b.String(), client)
+
+			break
+		case 2:
 			//Option 2
 			commandOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[1])
 
 			switch commandOption {
 			case 1:
-				sendPacket(client.conn, "1|"+getClientListString())
+				sendPacket(client, "1|"+getClientListString())
+				break
 			case 2:
 				dmOption := strings.Split(tempStr, "|")[2]
 				dmTarget := strings.Split(dmOption, " ")[0]
@@ -245,19 +258,23 @@ func handleMsg(client client, cid int) {
 				targetClient, success := getClientByNickname(dmTarget)
 
 				if success {
-					sendPacket(targetClient.conn, "2|"+client.nickname+"|"+dmMessage)
-				
+					sendPacket(targetClient, "2|"+client.nickname+"|"+dmMessage)
 
 				}
+				break
 
 			case 3:
-				sendPacket(client.conn, "3|")
+				sendPacket(client, "3|")
+				break
 			case 4:
-				sendPacket(client.conn, "4|Chat TCP Version 0.1")
+				sendPacket(client, "4|Chat TCP Version 0.1")
+				break
 			case 5:
-				sendPacket(client.conn, "5|")
+				sendPacket(client, "5|")
+				break
 			}
 		default:
+			break
 			//Option default
 			// do nothing
 			// conn.Close()
@@ -266,18 +283,20 @@ func handleMsg(client client, cid int) {
 
 }
 
-func getClientListString() string{
+func getClientListString() string {
 	returnStr := ""
 
 	for _, v := range clientMap {
-		returnStr += "\n<"+v.nickname+", "+v.ip+", "+v.port+">"
+		returnStr += "\n<" + v.nickname + ", " + v.ip + ", " + v.port + ">"
 	}
 
 	return returnStr
 }
 
-func sendPacket(conn net.Conn, serverMsg string) {
+func sendPacket(client client, serverMsg string) {
 	//send packet to client
 
-	conn.Write([]byte(serverMsg))
+	fmt.Printf("server send packet to %s : %s\n", client.nickname, serverMsg)
+	client.conn.Write([]byte(serverMsg))
+
 }
