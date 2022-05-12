@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -65,12 +64,15 @@ func main() {
 			return
 		}
 
-		targetNick := string(nickBuffer)
+		targetNick := string(nickBuffer[:count])
 
 		_, isDuplicate := getClientByNickname(targetNick)
 
-		newIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
-		newPort := strings.Split(conn.RemoteAddr().String(), ":")[1]
+		remoteAddr := conn.RemoteAddr().String()
+		lastIdx := strings.LastIndex(remoteAddr, ":")
+
+		newIP := remoteAddr[0:lastIdx]
+		newPort := remoteAddr[lastIdx+1:]
 
 		newClient := client{targetNick, uniqueID, conn, newIP, newPort}
 
@@ -84,7 +86,8 @@ func main() {
 
 		registerClient(newClient, uniqueID)
 
-		broadCastToAll(1, fmt.Sprintf("Client %d connected. Number of connected clients = %d", uniqueID, len(clientMap)))
+		broadCastToAll(1, fmt.Sprintf("[Welcome %s to CAU network class chat room at %s.]", newClient.nickname, remoteAddr))
+		broadCastToAll(1, fmt.Sprintf("[There are %d users connected.]", len(clientMap)))
 		go handleMsg(newClient, uniqueID) // when client is connect to server, make go-routine to communicate with client.
 		uniqueID++
 
@@ -167,13 +170,12 @@ func handleMsg(client client, cid int) {
 		buffer := make([]byte, 1024)
 
 		count, err := client.conn.Read(buffer)
-		// fmt.Printf("count = %d\n", count)
 
 		//when client sends packet
 
 		if err != nil {
 			unregisterClient(cid)
-			broadCastToAll(6, fmt.Sprintf("Client %d disconnected. Number of connected clients = %d", cid, len(clientMap)))
+			broadCastToAll(6, fmt.Sprintf("%s is disconnected. There are %d users in the chat room", client.nickname, len(clientMap)))
 			handleError(client.conn, err, "client disconnected!")
 			return
 		}
@@ -208,13 +210,13 @@ func handleMsg(client client, cid int) {
 
 		*/
 
-		tempStr := string(buffer)
+		tempStr := string(buffer[:count])
 
 		if strings.Contains(strings.ToUpper(tempStr), "I HATE PROFESSOR") {
 			//if client message includes 'i hate professor' disconnect socket
 			client.conn.Close()
 			unregisterClient(client.uniqueID)
-			broadCastToAll(6, fmt.Sprintf("Client %d disconnected. Number of connected clients = %d", cid, len(clientMap)))
+			broadCastToAll(6, fmt.Sprintf("%s is disconnected. There are %d users in the chat room", client.nickname, len(clientMap)))
 			sendPacket(client, "5|")
 		}
 
@@ -222,24 +224,15 @@ func handleMsg(client client, cid int) {
 
 		requestOption, _ := strconv.Atoi(strings.Split(tempStr, "|")[0]) // split client packet by '|' and takes option and convert to Integer.
 
-		// requestData := strings.Split(tempStr, "|")[1]// get message parameter from packet.
 		time.Sleep(time.Millisecond * 1) // minimum delay to deliver packet to client.
-		// fmt.Printf("Command %d\n\n", requestOption)// print Command #
 
 		switch requestOption {
 		case 1:
 			//  is not command (normal message)
 			message := strings.Split(tempStr, "|")[1]
-			// message.Write()
-			// formatMessage := fmt.Sprintf("%s> %s", client.nickname, message)
+			formatMessage := client.nickname + "> " + message
 
-			var b bytes.Buffer
-  			b.WriteString(client.nickname)
-			b.WriteString(" >")
-			b.WriteString(message)
-
-
-			broadCastExceptMe(0, b.String(), client)
+			broadCastExceptMe(0, formatMessage, client)
 
 			break
 		case 2:
@@ -251,9 +244,11 @@ func handleMsg(client client, cid int) {
 				sendPacket(client, "1|"+getClientListString())
 				break
 			case 2:
-				dmOption := strings.Split(tempStr, "|")[2]
-				dmTarget := strings.Split(dmOption, " ")[0]
-				dmMessage := strings.Split(dmOption, " ")[1]
+
+				// dmOption := strings.Split(tempStr, "|")[2]
+				dmTarget := strings.Split(tempStr, "|")[2]
+				dmMessage := strings.Split(tempStr, "|")[3]
+
 
 				targetClient, success := getClientByNickname(dmTarget)
 
@@ -290,13 +285,11 @@ func getClientListString() string {
 		returnStr += "\n<" + v.nickname + ", " + v.ip + ", " + v.port + ">"
 	}
 
+	fmt.Printf("return Str %s \n", returnStr)
 	return returnStr
 }
 
 func sendPacket(client client, serverMsg string) {
 	//send packet to client
-
-	fmt.Printf("server send packet to %s : %s\n", client.nickname, serverMsg)
 	client.conn.Write([]byte(serverMsg))
-
 }

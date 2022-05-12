@@ -69,7 +69,7 @@ func main() {
 	response := string(buffer[:bufferSize]) //wait for nickname response
 
 	if response == "duplicated" {
-		fmt.Printf("your nickname %s is duplicated. please use another nickname\n")
+		fmt.Printf("your nickname %s is duplicated. please use another nickname\n", nickname)
 		byebye()
 		conn.Close()
 		os.Exit(0)
@@ -77,8 +77,6 @@ func main() {
 
 	go handlePacket(conn)
 	handleInput(conn)
-
-	// select {}
 
 	defer conn.Close() // although when client gets panic, defer should disconnect socket gracefully
 }
@@ -94,11 +92,8 @@ func handlePacket(conn net.Conn) {
 		bufferSize := readPacket(conn, &buffer)
 
 		response := string(buffer[:bufferSize])
-		fmt.Printf("handle Packet\n")
-		fmt.Printf("server send : %s\n", response)
 
 		route, _ := strconv.Atoi(strings.Split(response, "|")[0])
-
 		msgArr := strings.Split(response, "|")
 
 		/*
@@ -129,7 +124,7 @@ func handlePacket(conn net.Conn) {
 			fromNickname := msgArr[1]
 			fromMessage := msgArr[2]
 
-			fmt.Printf("from: %s>%s\n", fromNickname, fromMessage)
+			fmt.Printf("from: %s> %s\n", fromNickname, fromMessage)
 			break
 		case 3:
 			//disconnect, do nothing
@@ -156,35 +151,6 @@ func handlePacket(conn net.Conn) {
 
 }
 
-// func processMyMessage(opt int, msg string) {
-// 	//if i request server with option n, then process received packet with n
-
-// 	switch opt {
-// 	case 1:
-// 		//if i request option number 1
-// 		fmt.Printf("Reply from server: %s\n", msg)
-// 		break
-// 	case 2:
-// 		//if i request option number 2
-// 		fmt.Printf("Reply from server: client IP = %s, port = %s\n", string(strings.Split(msg, ":")[0]), string(strings.Split(msg, ":")[1]))
-// 		break
-
-// 	case 3:
-// 		//if i request option number 3
-// 		fmt.Printf("Reply from server: requests served = %s\n", msg) //print server message directly
-// 		break
-
-// 	case 4:
-// 		//if i request option number 4
-// 		timeD, _ := time.ParseDuration(msg)
-// 		printDuration(timeD) // print server running time
-// 		break
-
-// 	}
-
-// 	printRTT(time.Since(lastRequestTime))
-// }
-
 func handleInput(conn net.Conn) {
 	for {
 		time.Sleep(time.Millisecond * 100)
@@ -199,12 +165,8 @@ func handleInput(conn net.Conn) {
 
 }
 func processCommandOption(command string, arguments string, conn net.Conn) {
-	fmt.Printf("processCommmandOption 1%s1 %s \n", command, arguments)
 	requestString := "2|"
-	if command == "ver" {
-		fmt.Printf("command\n")
 
-	}
 	switch command {
 	case "list":
 		//if user command is list
@@ -213,9 +175,12 @@ func processCommandOption(command string, arguments string, conn net.Conn) {
 
 	case "dm":
 		//if user command is dm
-		toNickname := strings.Split(arguments, " ")[0]
-		toMessage := strings.Split(arguments, " ")[1]
+
+		toNickname := arguments[:strings.Index(arguments, " ")]
+		toMessage := arguments[strings.Index(arguments, " ")+1:]
+
 		requestString += "2|" + toNickname + "|" + toMessage
+
 		sendPacket(conn, requestString)
 
 	case "exit":
@@ -223,9 +188,13 @@ func processCommandOption(command string, arguments string, conn net.Conn) {
 		requestString += "3|"
 		sendPacket(conn, requestString)
 
+		fmt.Println("connection is closed by server")
+		byebye()
+		conn.Close()
+		os.Exit(0)
+
 	case "ver":
 		//if user command is ver
-		fmt.Printf("ver \n")
 		requestString += "4|"
 		sendPacket(conn, requestString)
 
@@ -241,23 +210,21 @@ func processMyMessage(inputstr string, conn net.Conn) {
 		if option is given, it sends packet to server and get response.
 	*/
 
-	// var temp int
-	// fmt.Scanf("%s", &temp)
-
 	lastRequestTime = time.Now() //startTime for print RTT
 
 	if inputstr[:1] == "\\" {
 		//if user input string is command
 		command := ""
-		arguments := ""
+		var arguments string
 
 		if strings.Contains(inputstr, " ") == true {
 			command = strings.Split(strings.Split(inputstr, " ")[0], "\\")[1]
-			arguments = strings.Split(inputstr, " ")[1]
-
+			arguments = inputstr[strings.Index(inputstr, " ")+1:]
+			arguments = arguments[:len(arguments)-1]
 		} else {
 			//if no space
 			command = strings.Split(inputstr, "\\")[1]
+			command = command[:len(command)-1]
 		}
 
 		processCommandOption(command, arguments, conn)
@@ -280,22 +247,6 @@ func printRTT(d time.Duration) {
 	fmt.Printf("RTT = %dms \n\n\n", s) // print RTT Since startTime
 
 }
-func printDuration(d time.Duration) {
-	//print server running time in proper form(HH:MM:ss)
-
-	d = d.Round(time.Second)
-
-	h := d / time.Hour
-	d -= h * time.Hour
-
-	m := d / time.Minute
-	d -= m * time.Minute
-
-	s := d / time.Second
-	d -= s * time.Second
-
-	fmt.Printf("Reply from server: run time = %02d:%02d:%02d\n", h, m, s)
-}
 
 func sendPacket(conn net.Conn, requestString string) {
 	//send Packet to server
@@ -312,15 +263,4 @@ func readPacket(conn net.Conn, buffer *[]byte) int {
 		os.Exit(0)
 	}
 	return count
-}
-
-func printOption() {
-	//print Menu and 5 Options.
-	fmt.Printf("<Menu>\n")
-	fmt.Printf("option 1) convert text to UPPER-case letters.\n")
-	fmt.Printf("option 2) ask the server what the IP address and port number of the client is.\n")
-	fmt.Printf("option 3) ask the server how many client requests(commands) it has served so far.\n")
-	fmt.Printf("option 4) ask the server program how long it has been running for since it started.\n")
-	fmt.Printf("option 5) exit client program\n")
-
 }
