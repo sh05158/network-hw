@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var serverName string = "127.0.0.1" //server host
+var serverName string = "localhost" //server host
 var serverPort string = "56342"     //server port
 
 var myTurn bool
@@ -231,7 +231,7 @@ func handleInput(conn net.PacketConn, addr *net.UDPAddr) {
 			continue
 		}
 
-		inputstr = inputstr[:len(inputstr)-1]
+		// inputstr = inputstr[:len(inputstr)-1]
 
 		processMyMessage(inputstr, conn, addr)
 	}
@@ -336,6 +336,10 @@ func processMyMessage(inputstr string, conn net.PacketConn, addr *net.UDPAddr) {
 			sendPacket(conn, "3|", addr)
 
 			break
+		
+		default:
+			fmt.Printf("Invalid Command \n")
+			return
 		}
 	} else {
 		//normal chat
