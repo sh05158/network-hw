@@ -308,7 +308,10 @@ void handleMsg(struct client *soc, char *msg){
                         strcpy(temp, "2|");
                         strcat(temp,(*soc).nickname);
                         strcat(temp,"|");
-                        strcat(temp,dmMessage);
+
+                        if(dmMessage != NULL){
+                            strcat(temp,dmMessage);
+                        }
 
                         sendPacket(getClientByNickname(dmTarget ), temp );
                     }
@@ -350,8 +353,6 @@ void byebye() {
 
 void sendPacket(struct client *soc, char *msg){
     //send message to certain socket
-    usleep(10000);
-
     char packet[strlen(msg)+1];
     sprintf(packet,"%s",msg);
 
