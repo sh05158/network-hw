@@ -164,7 +164,7 @@ func handleInput(conn net.Conn) {
 		inputstr, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 
 		inputstr = inputstr[:len(inputstr)-1]
-		if len(inputstr) < 2 {
+		if len(inputstr) < 1 || len(strings.TrimSpace(inputstr)) == 0{
 			continue
 		}
 		processMyMessage(inputstr, conn)

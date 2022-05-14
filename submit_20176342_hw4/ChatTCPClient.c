@@ -1,6 +1,6 @@
 /**
  * 20176342 Song Min Joon
- * EasyTCPClient.c
+ * ChatTCPClient.c
  **/
 
 #include <sys/select.h>
@@ -326,7 +326,6 @@ void processMyMessage(char* inputstr, int soc){
 //    clock_gettime(CLOCK_MONOTONIC_RAW, &lastRequestTime);
     char requestString[BUF_SIZE] = "";
     char *arguments = "";
-    printf("pm \n");
     if(inputstr[0] == '\\'){
         char command[30];
 
@@ -338,9 +337,6 @@ void processMyMessage(char* inputstr, int soc){
         if(*(tokens) == NULL){
             printf("Invalid Command \n");
             return;
-        }
-        else {
-            printf(" not null \n");
         }
 
         if(inputstr[1] == ' '){
