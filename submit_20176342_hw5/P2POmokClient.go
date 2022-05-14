@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-var serverName string = "localhost" //server host
-var serverPort string = "56342"     //server port
+var serverName string = "nsl2.cau.ac.kr" //server host
+var serverPort string = "56342"          //server port
 
 var myTurn bool
 var isFirst bool
@@ -336,7 +336,7 @@ func processMyMessage(inputstr string, conn net.PacketConn, addr *net.UDPAddr) {
 			sendPacket(conn, "3|", addr)
 
 			break
-		
+
 		default:
 			fmt.Printf("Invalid Command \n")
 			return
