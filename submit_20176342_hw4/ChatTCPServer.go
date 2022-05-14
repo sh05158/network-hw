@@ -219,6 +219,7 @@ func handleMsg(client client, cid int) {
 			unregisterClient(client.uniqueID)
 			broadCastToAll(6, fmt.Sprintf("%s is disconnected. There are %d users in the chat room", client.nickname, len(clientMap)))
 			sendPacket(client, "5|")
+			continue
 		}
 
 		fmt.Printf("%s client msg %s\n", client.nickname, tempStr)
