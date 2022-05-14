@@ -1,0 +1,159 @@
+/**
+ * 20176342 Song Min Joon
+ * P2POmokServer.go
+ **/
+package main
+
+import (
+	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+)
+
+var MAX_USER int = 8
+
+var totalRequests int = 0       // total Request count global variable for server.
+var startTime time.Time         // for saving server start time
+var serverPort string = "56342" // for server port
+var uniqueID int = 1
+var clientMap map[int]client
+
+type client struct {
+	nickname string
+	uniqueID int
+	conn     net.Conn
+	ip       string
+	port     string
+	remote   string
+}
+
+func main() {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // for exit the program gracefully
+	go func() {
+		for sig := range c {
+			// sig is a ^C, handle it
+			_ = sig
+			byebye() // if this program is interrupt by Ctrl-c, print Bye bye and exits gracefully
+		}
+	}()
+
+	startTime = time.Now() // records server start time for server running time
+	listener, _ := net.Listen("tcp", ":"+serverPort)
+	fmt.Printf("Server is ready to receive on port %s\n", serverPort)
+
+	clientMap = make(map[int]client) //make client map for record clients
+
+	for {
+		//listener is waiting for tcp connection of clients.
+		conn, err := listener.Accept()
+		if err != nil {
+			handleError(conn, err, "server accept error..")
+		}
+
+		fmt.Printf("Connection request from %s\n", conn.RemoteAddr().String())
+
+		nickBuffer := make([]byte, 1024)
+
+		count, err := conn.Read(nickBuffer)
+
+		if err != nil || count == 0 {
+			continue
+			return
+		}
+
+		targetNick := string(nickBuffer[:count])
+
+		remoteAddr := conn.RemoteAddr().String()
+		lastIdx := strings.LastIndex(remoteAddr, ":")
+
+		newIP := remoteAddr[0:lastIdx]
+		newPort := remoteAddr[lastIdx+1:]
+
+		newClient := client{targetNick, uniqueID, conn, newIP, newPort, remoteAddr}
+
+		registerClient(newClient, uniqueID)
+
+		go handleMsg(newClient, uniqueID) // when client is connect to server, make go-routine to communicate with client.
+		uniqueID++
+
+		if len(clientMap) == 1 {
+			sendPacket(newClient, "waiting||")
+		} else if len(clientMap) == 2 {
+			var otherRemote client
+			for _, v := range clientMap {
+				if v.uniqueID != newClient.uniqueID {
+					otherRemote = v
+					sendPacket(v, "matched|"+newClient.nickname+"|"+newClient.remote)
+				}
+			}
+			sendPacket(newClient, "success|"+otherRemote.nickname+"|"+otherRemote.remote)
+
+			for _, v := range clientMap {
+				unregisterClient(v.uniqueID)
+			}
+
+		}
+
+	}
+
+	defer byebye() // although when client gets panic, defer should disconnect socket gracefully
+
+}
+
+func handleMsg(client client, cid int) {
+	for {
+		buffer := make([]byte, 1024)
+
+		count, err := client.conn.Read(buffer)
+
+		//when client sends packet
+
+		if err != nil {
+			unregisterClient(cid)
+			// broadCastToAll(6, fmt.Sprintf("%s is disconnected. There are %d users in the chat room", client.nickname, len(clientMap)))
+			handleError(client.conn, err, "client disconnected!")
+			return
+		}
+
+		if count == 0 {
+			// fmt.Printf("return ! \n")
+			return
+		}
+	}
+}
+func registerClient(client client, uniqueID int) int {
+	clientMap[uniqueID] = client
+	return uniqueID
+}
+
+func unregisterClient(uniqueID int) {
+	if _, ok := clientMap[uniqueID]; ok {
+		delete(clientMap, uniqueID)
+	}
+}
+
+func byebye() {
+	fmt.Printf("Bye bye~\n")
+	os.Exit(0)
+}
+
+func sendPacket(client client, serverMsg string) {
+	//send packet to client
+	time.Sleep(time.Millisecond * 1) // minimum delay to deliver packet to client.
+	client.conn.Write([]byte(serverMsg))
+	fmt.Printf("send packet %s => %s \n", client.nickname, serverMsg)
+}
+
+func handleError(conn net.Conn, err error, errmsg string) {
+	//handle error and print
+	if conn != nil {
+		conn.Close()
+	}
+	// fmt.Println(err)
+	// fmt.Println(errmsg)
+}
