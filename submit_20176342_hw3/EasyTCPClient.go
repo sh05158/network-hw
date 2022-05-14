@@ -17,14 +17,14 @@ import (
 	"time"
 )
 
-var serverName string = "nsl2.cau.ac.kr"//server host
-var serverPort string = "26342"//server port
+var serverName string = "localhost" //server host
+var serverPort string = "26342"     //server port
 
 var lastRequestTime time.Time
 
 func main() {
 	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)// for exit the program gracefully
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM) // for exit the program gracefully
 	go func() {
 		for sig := range c {
 			// sig is a ^C, handle it
@@ -33,17 +33,17 @@ func main() {
 		}
 	}()
 
-	conn, err := net.Dial("tcp", serverName+":"+serverPort)//tcp connection
+	conn, err := net.Dial("tcp", serverName+":"+serverPort) //tcp connection
 
 	if err != nil {
-				//if server is not working, print and exit
+		//if server is not working, print and exit
 		fmt.Printf("Please check your server is running\n")
 		byebye()
 		return
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.TCPAddr)//get local port
+	localAddr := conn.LocalAddr().(*net.TCPAddr) //get local port
 
 	fmt.Printf("Client is running on port %d\n", localAddr.Port)
 
@@ -52,7 +52,7 @@ func main() {
 
 	// select {}
 
-	defer conn.Close()// although when client gets panic, defer should disconnect socket gracefully
+	defer conn.Close() // although when client gets panic, defer should disconnect socket gracefully
 }
 
 func byebye() {
@@ -67,24 +67,25 @@ func handlePacket(conn net.Conn) {
 
 		response := string(buffer[:bufferSize])
 
-		// fmt.Println(response)
+		fmt.Printf("response : %s \n", response)
 
 		route, _ := strconv.Atoi(strings.Split(response, "|")[0])
 
 		msgArr := strings.Split(response, "|")
 
+
 		/*
 			server packet form
 
-			(Route|Option Number|Message) client request packet 
-			(Route|Message) server one sided packet 
+			(Route|Option Number|Message) client request packet
+			(Route|Message) server one sided packet
 
 			0|1|BLAH BLAH BLAH...
 			0|1|HELLO WORLD!
 
 			0|2|127.0.0.1:6342    //my ip and port
 			0|3|30 				  //count of server serves client requests
-			0|4|01h30m12s		  //server running time 
+			0|4|01h30m12s		  //server running time
 
 			1|client #3 is connected   //server broadcast message (server one-sided)
 			1|client #2 is disconnected   //server broadcast message (server one-sided)
@@ -109,7 +110,7 @@ func handlePacket(conn net.Conn) {
 
 func processMyMessage(opt int, msg string) {
 	//if i request server with option n, then process received packet with n
-	
+
 	switch opt {
 	case 1:
 		//if i request option number 1
@@ -122,13 +123,13 @@ func processMyMessage(opt int, msg string) {
 
 	case 3:
 		//if i request option number 3
-		fmt.Printf("Reply from server: requests served = %s\n", msg)//print server message directly
+		fmt.Printf("Reply from server: requests served = %s\n", msg) //print server message directly
 		break
 
 	case 4:
 		//if i request option number 4
 		timeD, _ := time.ParseDuration(msg)
-		printDuration(timeD) // print server running time 
+		printDuration(timeD) // print server running time
 		break
 
 	}
@@ -154,8 +155,8 @@ func processOption(opt int, conn net.Conn) {
 	*/
 	lastRequestTime = time.Now() //startTime for print RTT
 
-	// var temp int
-	// fmt.Scanf("%s", &temp)
+	var temp int
+	fmt.Scanf("%s", &temp)
 
 	switch opt {
 	case 1:
@@ -165,7 +166,7 @@ func processOption(opt int, conn net.Conn) {
 		lastRequestTime = time.Now()
 		requestString := strconv.Itoa(opt) + "|" + input
 		sendPacket(conn, requestString)
-		//send packet 
+		//send packet
 	case 2:
 		// Option 2
 		requestString := strconv.Itoa(opt) + "|"

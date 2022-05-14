@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-var serverName string = "localhost" //server host
-var serverPort string = "26342"     //server port
+var serverName string = "nsl2.cau.ac.kr" //server host
+var serverPort string = "26342"          //server port
 
 var lastRequestTime time.Time
 
@@ -70,6 +70,11 @@ func main() {
 
 	if response == "duplicated" {
 		fmt.Printf("your nickname %s is duplicated. please use another nickname\n", nickname)
+		byebye()
+		conn.Close()
+		os.Exit(0)
+	} else if response == "full" {
+		fmt.Printf("chatting room full. cannot connect\n")
 		byebye()
 		conn.Close()
 		os.Exit(0)
@@ -159,7 +164,9 @@ func handleInput(conn net.Conn) {
 		inputstr, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 
 		inputstr = inputstr[:len(inputstr)-1]
-
+		if len(inputstr) < 2 {
+			continue
+		}
 		processMyMessage(inputstr, conn)
 	}
 
@@ -220,11 +227,11 @@ func processMyMessage(inputstr string, conn net.Conn) {
 		if strings.Contains(inputstr, " ") == true {
 			command = strings.Split(strings.Split(inputstr, " ")[0], "\\")[1]
 			arguments = inputstr[strings.Index(inputstr, " ")+1:]
-			arguments = arguments[:len(arguments)-1]
+			// arguments = arguments[:len(arguments)-1]
 		} else {
 			//if no space
 			command = strings.Split(inputstr, "\\")[1]
-			command = command[:len(command)-1]
+			// command = command[:len(command)-1]
 		}
 
 		processCommandOption(command, arguments, conn)

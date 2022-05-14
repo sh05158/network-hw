@@ -147,7 +147,7 @@ func handleMsg(conn net.Conn, cid int) {
 
 		*/
 
-		tempStr := string(buffer)
+		tempStr := string(buffer[:count])
 
 		// fmt.Printf("client msg %s\n", tempStr)
 

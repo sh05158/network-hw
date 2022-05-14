@@ -1,4 +1,4 @@
-objects = EasyTCPClient MultiClientTCPServer
+objects = ChatTCPClient ChatTCPServer
 all: $(objects)
 
 $(objects): %: %.c

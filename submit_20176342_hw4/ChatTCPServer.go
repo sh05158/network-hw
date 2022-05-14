@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var MAX_USER int = 8
+
 var totalRequests int = 0       // total Request count global variable for server.
 var startTime time.Time         // for saving server start time
 var serverPort string = "26342" // for server port
@@ -76,6 +78,12 @@ func main() {
 
 		newClient := client{targetNick, uniqueID, conn, newIP, newPort}
 
+		if len(clientMap) >= MAX_USER {
+			sendPacket(newClient, "full")
+			conn.Close()
+			continue
+		}
+
 		if isDuplicate {
 			sendPacket(newClient, "duplicated")
 			conn.Close()
@@ -106,13 +114,6 @@ func getClientByNickname(nick string) (client, bool) {
 	return client{}, false
 }
 
-func printClientNum() {
-	for {
-		time.Sleep(time.Minute * 1)
-		fmt.Printf("Number of connected clients = %d\n", len(clientMap))
-	}
-}
-
 func broadCastToAll(route int, msg string) {
 	for _, v := range clientMap {
 		sendPacket(v, strconv.Itoa(route)+"|"+msg)
@@ -125,7 +126,7 @@ func broadCastExceptMe(route int, msg string, client client) {
 		if client.uniqueID != v.uniqueID {
 			//do not send to myself
 			broadCastStr := strconv.Itoa(route) + "|" + msg
-			fmt.Printf("broadcast msg : %s send to %s\n", broadCastStr, v.nickname)
+			// fmt.Printf("broadcast msg : %s send to %s\n", broadCastStr, v.nickname)
 			sendPacket(v, broadCastStr)
 		}
 	}
@@ -249,7 +250,6 @@ func handleMsg(client client, cid int) {
 				dmTarget := strings.Split(tempStr, "|")[2]
 				dmMessage := strings.Split(tempStr, "|")[3]
 
-
 				targetClient, success := getClientByNickname(dmTarget)
 
 				if success {
@@ -291,5 +291,7 @@ func getClientListString() string {
 
 func sendPacket(client client, serverMsg string) {
 	//send packet to client
+	time.Sleep(time.Millisecond * 1)// minimum delay to deliver packet to client.
 	client.conn.Write([]byte(serverMsg))
+	fmt.Printf("send packet %s => %s \n",client.nickname,serverMsg)
 }
