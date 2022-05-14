@@ -391,6 +391,13 @@ void processCommandOption(char* command, char* arguments, int soc){
             char *toNickname = substr(0,idx-1,arguments);
             char *toMessage = substr(idx+1,strlen(arguments),arguments);
 
+            char *commandCheck = strstr(toNickname,"\\");
+
+            if(commandCheck){
+                printf("Invalid Command \n");
+                return;
+            }
+
             strcat(requestString, "2|");
             strcat(requestString, toNickname);
             strcat(requestString, "|");
