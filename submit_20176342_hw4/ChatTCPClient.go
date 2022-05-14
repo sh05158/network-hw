@@ -1,6 +1,6 @@
 /**
  * 20176342 Song Min Joon
- * EasyTCPClient.go
+ * ChatTCPClient.go
  **/
 
 package main
@@ -182,7 +182,10 @@ func processCommandOption(command string, arguments string, conn net.Conn) {
 
 	case "dm":
 		//if user command is dm
-
+		if strings.Index(arguments," ") == -1 {
+			fmt.Printf("Invalid Command \n")
+			return
+		}
 		toNickname := arguments[:strings.Index(arguments, " ")]
 		toMessage := arguments[strings.Index(arguments, " ")+1:]
 
@@ -210,7 +213,12 @@ func processCommandOption(command string, arguments string, conn net.Conn) {
 		lastRequestTime = time.Now() //startTime for print RTT
 		requestString += "5|"
 		sendPacket(conn, requestString)
+	
+	default:
+		fmt.Printf("Invalid Command\n")
+		//
 	}
+
 }
 func processMyMessage(inputstr string, conn net.Conn) {
 	/*
@@ -223,6 +231,11 @@ func processMyMessage(inputstr string, conn net.Conn) {
 		//if user input string is command
 		command := ""
 		var arguments string
+
+		if inputstr[0:1] == " "{
+			fmt.Printf("Invalid Command\n")
+			return
+		}
 
 		if strings.Contains(inputstr, " ") == true {
 			command = strings.Split(strings.Split(inputstr, " ")[0], "\\")[1]

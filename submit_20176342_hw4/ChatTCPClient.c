@@ -326,7 +326,7 @@ void processMyMessage(char* inputstr, int soc){
 //    clock_gettime(CLOCK_MONOTONIC_RAW, &lastRequestTime);
     char requestString[BUF_SIZE] = "";
     char *arguments = "";
-
+    printf("pm \n");
     if(inputstr[0] == '\\'){
         char command[30];
 
@@ -335,6 +335,18 @@ void processMyMessage(char* inputstr, int soc){
 
         char** tokens = str_split(tempStr,'\\');
 
+        if(*(tokens) == NULL){
+            printf("Invalid Command \n");
+            return;
+        }
+        else {
+            printf(" not null \n");
+        }
+
+        if(inputstr[1] == ' '){
+            printf("Invalid Command \n");
+            return;
+        }
 
         if(indexOf(inputstr," ")!=-1){
             //command which have space
@@ -391,6 +403,9 @@ void processCommandOption(char* command, char* arguments, int soc){
             sendPacket(soc, requestString);
 
         }
+        else {
+            printf("Invalid Command \n");
+        }
 
     } else if(strcmp(command, "exit") == 0){
         //if user command is exit
@@ -414,6 +429,8 @@ void processCommandOption(char* command, char* arguments, int soc){
         strcat(requestString, "5|");
         sendPacket(soc, requestString);
 
+    } else {
+        printf("Invalid Command \n");
     }
 
 }

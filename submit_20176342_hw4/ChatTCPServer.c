@@ -1,6 +1,6 @@
 /**
  * 20176342 Song Min Joon
- * MultiClientTCPServer.c
+ * ChatTCPServer.c
  **/
 
 #include <sys/select.h>
