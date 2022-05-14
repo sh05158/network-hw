@@ -187,12 +187,6 @@ func processCommandOption(command string, arguments string, conn net.Conn) {
 			return
 		}
 		toNickname := arguments[:strings.Index(arguments, " ")]
-
-		if strings.Index(toNickname, "\\") != -1 {
-			fmt.Printf("Invalid Command \n")
-			return
-		}
-
 		toMessage := arguments[strings.Index(arguments, " ")+1:]
 
 		requestString += "2|" + toNickname + "|" + toMessage
