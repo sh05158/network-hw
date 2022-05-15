@@ -14,10 +14,6 @@ import (
 	"time"
 )
 
-var MAX_USER int = 8
-
-var totalRequests int = 0       // total Request count global variable for server.
-var startTime time.Time         // for saving server start time
 var serverPort string = "56342" // for server port
 var uniqueID int = 1
 var clientMap map[int]client
@@ -42,7 +38,6 @@ func main() {
 		}
 	}()
 
-	startTime = time.Now() // records server start time for server running time
 	listener, _ := net.Listen("tcp", ":"+serverPort)
 	fmt.Printf("Server is ready to receive on port %s\n", serverPort)
 
@@ -154,6 +149,4 @@ func handleError(conn net.Conn, err error, errmsg string) {
 	if conn != nil {
 		conn.Close()
 	}
-	// fmt.Println(err)
-	// fmt.Println(errmsg)
 }
