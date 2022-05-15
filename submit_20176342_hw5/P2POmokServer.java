@@ -1,34 +1,78 @@
 package submit_20176342_hw5;
+
 /**
  * 20176342 Song Min Joon
  * P2POmokServer.java
  **/
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.sql.Time;
 
-public class P2POmokServer {
-	class client {
-		String nickname;
-		int uniqueID;
-		Socket conn;
-		String ip;
-		String port;
-		String remote;
-	}
+class client {
+    String nickname;
+    int uniqueID;
+    Socket conn;
+    String ip;
+    String port;
+    String remote;
 
-    final public static int serverPort = 26342;// for server port
+    client(int uniqueID){
+        this.uniqueID = uniqueID;
+    }
+
+    client(String nickname, int uniqueID, Socket conn, String ip, String port, String remoteAddr){
+        this.nickname = nickname;
+        this.uniqueID = uniqueID;
+        this.conn = conn;
+        this.ip = ip;
+        this.port = port;
+        this.remote = remoteAddr;
+    }
+
+    
+
+}
+public class P2POmokServer {
+	
+
+    final public static int serverPort = 56342;// for server port
     public static int uniqueID = 1;// for server port
-	public static HashMap<Integer ,client> clientMap = new HashMap<Integer, client>();
+	public static ConcurrentHashMap<Integer ,client> clientMap = new ConcurrentHashMap<Integer, client>();
+
+
+    public static void sendPacket(client client, String packet) {
+        // send packet to server
+        OutputStream os;
+        try {
+            os = client.conn.getOutputStream();
+
+            try {
+                os.write(packet.getBytes());
+                os.flush();
+            } catch (IOException e) {
+    
+            }
+        } catch (IOException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+
+    
+    }
 
 	public static void main(String args[]){
         ServerSocket listener = null;
@@ -48,10 +92,57 @@ public class P2POmokServer {
                 conn = listener.accept();
                 System.out.printf("Connection request from %s\n", conn.getInetAddress() + ":" + conn.getPort());
 
-                // when client is connect to server, make individual sub-thread to communicate
-                // each client.
-                ServerReceiver th = new ServerReceiver(conn);
+                
+
+                int bufferSize = 1024;
+                byte[] buffer = new byte[bufferSize];
+
+                InputStream is = conn.getInputStream();
+                int count = is.read(buffer);
+
+                if (count == -1) {
+                    System.out.println("Client disconnected");
+                    break;
+                }
+
+                String targetNick = new String(buffer, 0, count);
+
+                String remoteAddr = conn.getInetAddress() + ":" + conn.getPort();
+                String ip = conn.getInetAddress().toString();
+                String port = conn.getPort()+"";
+
+                client newClient = new client(targetNick, uniqueID, conn, ip, port, remoteAddr);
+                
+                registerClient(newClient, uniqueID);
+                
+                ServerReceiver th = new ServerReceiver(conn, uniqueID);
+                uniqueID++;
+
                 th.start();
+
+                if (clientMap.size() == 1) {
+                    sendPacket(newClient, "waiting||");
+                } else if(clientMap.size() == 2) {
+                    client otherRemote = new client(-1);
+
+                    for( int key : clientMap.keySet() ){
+                        client v = clientMap.get(key);
+
+                        if( v.uniqueID != newClient.uniqueID){
+                            otherRemote = v;
+                            sendPacket(v,"matched|"+newClient.nickname+"|"+newClient.remote);
+                        }
+                    }
+                   
+                    sendPacket(newClient,"success|"+otherRemote.nickname+"|"+otherRemote.remote);
+        
+                    for( int key : clientMap.keySet() ){
+                        client v = clientMap.get(key);
+                        unregisterClient(v.uniqueID);
+                    }
+                   
+        
+                }
             }
 
         } catch (IOException e) {
@@ -101,9 +192,11 @@ public class P2POmokServer {
         Socket conn;
         DataInputStream is;
         DataOutputStream os;
+        int uniqueID;
 
-        ServerReceiver(Socket conn) {
+        ServerReceiver(Socket conn, int uniqueID) {
             this.conn = conn;
+            this.uniqueID = uniqueID;
             try {
                 is = new DataInputStream(conn.getInputStream());
                 os = new DataOutputStream(conn.getOutputStream());
@@ -113,6 +206,8 @@ public class P2POmokServer {
         }
 
         public void run() {
+            //read packet for nickname
+
             while (true) {
                 try {
                     int bufferSize = 1024;
@@ -122,92 +217,23 @@ public class P2POmokServer {
 
                     if (count == -1) {
                         System.out.println("Client disconnected");
+
+                        unregisterClient(this.uniqueID);
+
                         break;
                     }
 
-                    // read packet from server and handle message
-                    String clientMsg = new String(buffer, 0, count);
-
-                    handleMsg(clientMsg);
+                    
 
                 } catch (IOException e) {
+                    unregisterClient(this.uniqueID);
+
                     System.out.println("client is disconnected");
                     break;
                 }
             }
 
         }
-
-        public void handleMsg(String msg) {
-
-            /*
-             * client packet form
-             * 
-             * (Option Number|Message)
-             * 
-             * 1|blah blah blah...
-             * 1|hello world!
-             * 
-             * 2| => message is not required
-             * 3| => message is not required
-             * 4| => message is not required
-             * 
-             * 5| => maybe not arrived??
-             * 
-             */
-
-            String[] req = msg.split("\\|"); // split client packet by '|' and takes option and convert to Integer.
-            int requestOption = Integer.parseInt(req[0]);
-
-            System.out.printf("Command %d\n\n\n", requestOption); // print Command #
-
-            String requestData;
-            try {
-                requestData = req[1]; // get message parameter from packet.
-
-            } catch (ArrayIndexOutOfBoundsException e) {
-                requestData = "";
-            }
-
-            switch (requestOption) {
-                case 1:
-                    // Option 1
-                    sendPacket(requestData.toUpperCase());
-                    break;
-                case 2:
-                    // Option 2
-                    String ip = (this.conn.getInetAddress() + ":" + this.conn.getPort());
-                    sendPacket(ip);
-                    break;
-                case 3:
-                    // Option 3
-                    // sendPacket(totalRequest + "");
-                    break;
-                case 4:
-                    // Option 4
-                    // sendPacket(milliToTimeFormat(elapsed) + "");
-                    break;
-                case 5:
-                    // Option 5
-                    try {
-                        this.conn.close();
-                        this.stop();
-                    } catch (IOException e) {
-
-                    }
-                    break;
-                default:
-                    // Option default
-                    try {
-                        this.conn.close();
-                        this.stop();
-                    } catch (IOException e) {
-
-                    }
-                    break;
-            }
-        }
-
         void sendPacket(String packet) {
             // send packet to server
             try {
