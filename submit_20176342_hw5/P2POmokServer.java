@@ -1,5 +1,3 @@
-package submit_20176342_hw5;
-
 /**
  * 20176342 Song Min Joon
  * P2POmokServer.java
@@ -90,7 +88,7 @@ public class P2POmokServer {
             while (true) {
                 // listener is waiting for tcp connection of clients.
                 conn = listener.accept();
-                System.out.printf("Connection request from %s\n", conn.getInetAddress() + ":" + conn.getPort());
+                System.out.printf("Connection request from %s\n", conn.getInetAddress().toString().split("/")[1] + ":" + conn.getPort());
 
                 
 
@@ -107,8 +105,8 @@ public class P2POmokServer {
 
                 String targetNick = new String(buffer, 0, count);
 
-                String remoteAddr = conn.getInetAddress() + ":" + conn.getPort();
-                String ip = conn.getInetAddress().toString();
+                String remoteAddr = conn.getInetAddress().toString().split("/")[1] + ":" + conn.getPort();
+                String ip = conn.getInetAddress().toString().split("/")[1];
                 String port = conn.getPort()+"";
 
                 client newClient = new client(targetNick, uniqueID, conn, ip, port, remoteAddr);
