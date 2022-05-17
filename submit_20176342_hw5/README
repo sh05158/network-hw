@@ -1,8 +1,19 @@
 How to run Omok JAVA GUI Version
 
-type on terminal
+[In Windows OS]
 
-1. 'make'
-2. 'java P2POmokClient'
+1. run command 'javac P2POmokServer.java' , 'java P2POmokServer' to run server on nsl2.cau.ac.kr any machine
+2. you can run server by GO version ('go run P2POmokServer.go')
+3. run at least 2 terminal for client ( it is required to run more than 2 terminal you can play omok! )
+4. 'javac P2POmokClient.java'
+5. 'java P2POmokClient NICKNAME'
+6. play omok!
 
-Easy
+[In Mac OS]
+
+1. run command 'javac P2POmokServer.java' , 'java P2POmokServer' to run server on nsl2.cau.ac.kr any machine
+2. you can run server by GO version ('go run P2POmokServer.go')
+3. run at least 2 terminal for client ( it is required to run more than 2 terminal you can play omok! )
+4. 'javac P2POmokClient.java'
+5. 'java P2POmokClient NICKNAME'
+6. play omok!
