@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var serverName string = "127.0.0.1" //server host
+var serverName string = "nsl2.cau.ac.kr" //server host
 var serverPort string = "56342"     //server port
 
 var myTurn bool

@@ -179,7 +179,7 @@ static private String bytesToString(byte[] ba, int str, int len) {
 	
 
 public class P2POmokClient extends JFrame {
-	final static String serverName = "localhost"; // server host
+	final static String serverName = "nsl2.cau.ac.kr"; // server host
     final static int serverPort = 56342;// server port
 	static clientclient opponent;
 	static Timer timer = new Timer();
@@ -195,8 +195,23 @@ public class P2POmokClient extends JFrame {
 
 	static JPanel drawStone;
 
+	static JTextArea ta = new JTextArea();
+
+
+
+	public static void printf(String format, Object ... args){
+		System.out.printf(format, args);
+		ta.append(String.format(format,args).toString());
+	}
+
+	public static void println(String format){
+		System.out.println(format);
+		ta.append(format.toString()+"\n");
+	}
+
 	class MyMouseListener extends Frame implements MouseInputListener {
 
+	
 	@Override
 	public void mouseClicked(java.awt.event.MouseEvent e) {
 		// TODO Auto-generated method stub
@@ -231,15 +246,15 @@ public class P2POmokClient extends JFrame {
 		}
 
 		if(detX < 0 || detY < 0){
-			System.out.println("Invalid Click");
+			println("Invalid Click");
 			return;
 		}
 		else {
-			// System.out.printf("(%d, %d)\n",detX,detY);
+			// printf("(%d, %d)\n",detX,detY);
 		}
 
 		if(!myTurn || omok.isDone){
-			System.out.println("Invalid Click");
+			println("Invalid Click");
 			return;
 		}
 
@@ -390,7 +405,6 @@ class DrawOmok extends JPanel{
 		contentPane.setLayout(null);
 		contentPane.setSize(800,800);
 
-        JTextArea ta = new JTextArea();
 		ta.setLocation(700,60);
 		ta.setSize(300,600);
 		ta.setRows(30);
@@ -403,8 +417,9 @@ class DrawOmok extends JPanel{
 
         TextAreaOutputStream taos = new TextAreaOutputStream( ta, 60 );
         PrintStream ps = new PrintStream( taos );
-        System.setOut( ps );
-        System.setErr( ps );
+        // System.setOut( ps );
+        // System.setErr( ps );
+		
 
 
 		JScrollPane p = new JScrollPane( ta );
@@ -544,6 +559,7 @@ class DrawOmok extends JPanel{
 		addWindowListener(new java.awt.event.WindowAdapter() {
 			public void windowClosing(WindowEvent winEvt) {
 				HandleInput.processMyMessage("\\exit");
+				println("bye bye~");
 				System.exit(0);
 			}
 		});
@@ -593,14 +609,14 @@ class DrawOmok extends JPanel{
     public static void main(String[] args) {
 		new P2POmokClient();
 		if(args.length < 1){
-			System.out.println("Please check your nickname argunemt");
+			println("Please check your nickname argunemt");
 			byebye();
 			return;
 		}
 
 		String nickname = args[0];
 		if(nickname.length() <= 0){
-			System.out.println("Please check your nickname argunemt");
+			println("Please check your nickname argunemt");
 			byebye();
 			return;
 
@@ -621,7 +637,7 @@ class DrawOmok extends JPanel{
 			localPort = tcpconn.getLocalPort();
 			localIP = tcpconn.getLocalAddress().toString();
 
-			// System.out.println("Client is running on "+tcpconn.getLocalAddress()+":"+tcpconn.getLocalPort());
+			// println("Client is running on "+tcpconn.getLocalAddress()+":"+tcpconn.getLocalPort());
 
 			sendPacketTCP(os, nickname);
 
@@ -629,17 +645,17 @@ class DrawOmok extends JPanel{
 			String[] responseArr = res.split("\\|");
 
 
-			System.out.printf("welcome %s to p2p-omok server at %s. \n",nickname, tcpconn.getRemoteSocketAddress().toString());
+			printf("welcome %s to p2p-omok server at %s. \n",nickname, tcpconn.getRemoteSocketAddress().toString());
 			
 			if(responseArr[0].equals("waiting")){
-				System.out.printf("waiting for an opponent. \n");
+				printf("waiting for an opponent. \n");
 
 				res = readPacketTCP(is);
 
 				responseArr = res.split("\\|");
 
 				if(responseArr[0].equals("matched")){
-					System.out.printf("%s joined (%s). you play first. \n", responseArr[1], responseArr[2]);
+					printf("%s joined (%s). you play first. \n", responseArr[1], responseArr[2]);
 					targetServer = responseArr[2];
 					myTurn = true;
 					isFirst = true;
@@ -649,8 +665,8 @@ class DrawOmok extends JPanel{
 			}
 			else if(responseArr[0].equals("success")){
 				//second client
-				System.out.printf("%s is waiting for you (%s). \n", responseArr[1], responseArr[2]);
-				System.out.printf("%s plays first. \n", responseArr[1]);
+				printf("%s is waiting for you (%s). \n", responseArr[1], responseArr[2]);
+				printf("%s plays first. \n", responseArr[1]);
 				targetServer = responseArr[2];
 
 				myTurn = false;
@@ -666,12 +682,12 @@ class DrawOmok extends JPanel{
 				conn = new DatagramSocket(localPort);
 				
 			} catch(SocketException e){
-				System.out.println("please check your udp socket : "+localPort);
+				println("please check your udp socket : "+localPort);
 				byebye();
 				return;
 			}
 	
-			// System.out.printf("Client is running on %s \n",conn.getLocalAddress());
+			// printf("Client is running on %s \n",conn.getLocalAddress());
 	
 			omok = new Omok();
 			omok.initOmok();
@@ -696,12 +712,12 @@ class DrawOmok extends JPanel{
 
         } catch (UnknownHostException e) {
             //server not connected
-            System.out.println("Please check your server is running");
-            System.exit(0);
+            println("Please check your server is running");
+            // System.exit(0);
         } catch (IOException e) {
             //server not connected
-            System.out.println("Please check your server is running");
-            System.exit(0);
+            println("Please check your server is running");
+            // System.exit(0);
 
         }
 
@@ -737,9 +753,11 @@ class DrawOmok extends JPanel{
 			case 0:
 				if (isMine) {
 					//my chatting does not need to display!
+					printf("%s\n", msgArr[1]);
+
 					return;
 				} else {
-					System.out.printf("%s> %s\n", opponent.nickname, msgArr[1]);
+					printf("%s> %s\n", opponent.nickname, msgArr[1]);
 				}
 				break;
 
@@ -780,16 +798,16 @@ class DrawOmok extends JPanel{
 
 				if (checkwin == 1) {
 					if (isFirst) {
-						System.out.printf("you win\n");
+						printf("you win\n");
 					} else {
-						System.out.printf("you lose\n");
+						printf("you lose\n");
 					}
 					omok.isDone = true;
 				} else if (checkwin == 2) {
 					if (isFirst) {
-						System.out.printf("you lose\n");
+						printf("you lose\n");
 					} else {
-						System.out.printf("you win\n");
+						printf("you win\n");
 					}
 					omok.isDone = true;
 				}
@@ -798,11 +816,11 @@ class DrawOmok extends JPanel{
 		case 2:
 			if (isMine) {
 				//if i gave up the game
-				System.out.printf("you lose\n");
+				printf("you lose\n");
 			} else {
 				//if opponent give up the game
-				System.out.printf("%s give up this game ! \n", opponent.nickname);
-				System.out.printf("you win\n");
+				printf("%s give up this game ! \n", opponent.nickname);
+				printf("you win\n");
 			}
 			omok.isDone = true;
 			break;
@@ -810,13 +828,13 @@ class DrawOmok extends JPanel{
 			if (!omok.isDone) {
 				if (isMine) {
 					//if i gave up the game
-					System.out.printf("you lose\n");
+					printf("you lose\n");
 					// byebye();
 					System.exit(0);
 				} else {
 					//if opponent give up the game
-					System.out.printf("%s left the game ! \n", opponent.nickname);
-					System.out.printf("you win\n");
+					printf("%s left the game ! \n", opponent.nickname);
+					printf("you win\n");
 				}
 				omok.isDone = true;
 			} else {
@@ -826,7 +844,7 @@ class DrawOmok extends JPanel{
 					System.exit(0);
 				} else {
 					//if opponent give up the game
-					System.out.printf("%s left the game ! \n", opponent.nickname);
+					printf("%s left the game ! \n", opponent.nickname);
 				}
 			}
 
@@ -836,13 +854,13 @@ class DrawOmok extends JPanel{
 			if (!omok.isDone) {
 				if (isMine) {
 					//if i gave up the game
-					System.out.printf("time out..(10s)\n");
-					System.out.printf("you lose\n");
+					printf("time out..(10s)\n");
+					printf("you lose\n");
 
 				} else {
 					//if opponent give up the game
-					System.out.printf("%s time out..(10s) \n", opponent.nickname);
-					System.out.printf("you win\n");
+					printf("%s time out..(10s) \n", opponent.nickname);
+					printf("you win\n");
 				}
 				omok.isDone = true;
 			}
@@ -852,7 +870,7 @@ class DrawOmok extends JPanel{
 
     public static void byebye() {
         //print bye bye
-        System.out.println("Bye bye~");
+        println("Bye bye~");
     }
 
     public static void sendPacketTCP(OutputStream os, String requestString) {
@@ -878,7 +896,7 @@ class DrawOmok extends JPanel{
 
         } catch (IOException e) {
 
-            System.out.println("disconnected by server");
+            println("disconnected by server");
             System.exit(0);
 
             return "";
@@ -898,7 +916,7 @@ class DrawOmok extends JPanel{
             conn.send(dp);
 			emit(conn, requestString, true);
 
-			// System.out.println("send packet : "+requestString+" / "+ip+ " : "+port);
+			// println("send packet : "+requestString+" / "+ip+ " : "+port);
 
 			
 
@@ -917,7 +935,7 @@ class DrawOmok extends JPanel{
             conn.receive(response); // receive
             String res = new String(buffer, 0, response.getLength());
 
-			System.out.println("read Packet : "+res);
+			println("read Packet : "+res);
             return res;
 
         } catch (IOException e) {
@@ -942,7 +960,7 @@ class DrawOmok extends JPanel{
                     DatagramPacket buffer = new DatagramPacket(new byte[1024], 1024);
                     this.conn.receive(buffer);// read packet into buffer
 
-                    // System.out.printf("UDP message from %s\n", buffer.getAddress() + ":" + buffer.getPort()); // print
+                    // printf("UDP message from %s\n", buffer.getAddress() + ":" + buffer.getPort()); // print
                     //                                                                                           // ip,
                     //                                                                                           // port
 
@@ -952,7 +970,7 @@ class DrawOmok extends JPanel{
                     emit(conn, new String(buffer.getData(),0 , buffer.getLength()), false);// handle client msg using client
                                                                                        // address and port
                 } catch (IOException e) {
-                    System.out.println("client is disconnected");
+                    println("client is disconnected");
                     break;
                 }
             }
@@ -1012,23 +1030,23 @@ class DrawOmok extends JPanel{
 			if (inputstr.length() >= 2 && inputstr.substring(0, 2).equals("\\\\")) {
 				//place stone
 				if (omok.isDone) {
-					System.out.printf("This game is already done. \n");
+					printf("This game is already done. \n");
 					return;
 				}
 
 				if (omok.checkWin() != 0) {
-					System.out.printf("This game is already done. \n");
+					printf("This game is already done. \n");
 					return;
 				}
 
 				// inputstr = inputstr[:len(inputstr)-1];
 				if (!myTurn) {
-					System.out.printf("Not your turn \n");
+					printf("Not your turn \n");
 					return;
 				}
 				
 				if(inputstr.split("\\\\\\\\").length < 2){
-					System.out.printf("Invalid command \n");
+					printf("Invalid command \n");
 					return;
 				}
 				String temp = inputstr.split("\\\\\\\\")[1];
@@ -1054,14 +1072,14 @@ class DrawOmok extends JPanel{
 				}
 
 				if (x == -1 || y == -1) {
-					System.out.printf("Invalid Command \n");
+					printf("Invalid Command \n");
 					return;
 				}
 
 				if (omok.canPlace(x, y)) {
 					sendPacket(conn, "1|"+x+" "+y, targetIP, Integer.parseInt(targetPort));
 				} else {
-					System.out.printf("Invalid move! \n");
+					printf("Invalid move! \n");
 				}
 
 			} else if (inputstr.substring(0, 1).equals("\\")) {
@@ -1073,12 +1091,12 @@ class DrawOmok extends JPanel{
 
 				if(command.equals("gg")){
 					if (omok.isDone) {
-						System.out.printf("This game is already done. \n");
+						printf("This game is already done. \n");
 						return;
 					}
 
 					if (omok.checkWin() != 0) {
-						System.out.printf("This game is already done. \n");
+						printf("This game is already done. \n");
 						return;
 					}
 
@@ -1087,7 +1105,7 @@ class DrawOmok extends JPanel{
 					sendPacket(conn, "3|", targetIP, Integer.parseInt(targetPort));
 
 				} else {
-					System.out.printf("Invalid Command \n");
+					printf("Invalid Command \n");
 					return;
 				}
 			} else {
@@ -1115,29 +1133,29 @@ class DrawOmok extends JPanel{
 		}
 	
 		void printOmok(){
-			System.out.printf("  y 0 1 2 3 4 5 6 7 8 9  \n");
-			System.out.printf("x -----------------------\n");
+			printf("  y 0 1 2 3 4 5 6 7 8 9  \n");
+			printf("x -----------------------\n");
 			for (int i = 0; i<10; i++) {
-				System.out.printf("%d |", i);
+				printf("%d |", i);
 		
 				for (int j = 0; j<10; j++) {
 					int val = omok[i][j];
 					if (val == 0) {
-						System.out.printf(" +");
+						printf(" +");
 					} else if (val == 1) {
-						System.out.printf(" O");
+						printf(" O");
 					} else if (val == 2) {
-						System.out.printf(" @");
+						printf(" @");
 					}
 				}
 		
-				System.out.printf(" |\n");
+				printf(" |\n");
 			}
-			System.out.printf("  -----------------------\n");
+			printf("  -----------------------\n");
 		}
 		void placeStone(int x, int y, int num){
 			if (omok[x][y] != 0) {
-				System.out.printf("Unknown err (%d, %d) is already %d\n", x, y, omok[x][y]);
+				printf("Unknown err (%d, %d) is already %d\n", x, y, omok[x][y]);
 				return;
 			}
 			omok[x][y] = num;

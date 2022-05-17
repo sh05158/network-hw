@@ -1,8 +1,16 @@
-objects = ChatTCPClient ChatTCPServer
-all: $(objects)
+JFLAGS = -g
+JC = javac
+.SUFFIXES: .java .class
+.java.class:
+	$(JC) $(JFLAGS) $*.java
 
-$(objects): %: %.c
-	$(CC) $(CFLAGS) -o $@ $<
+CLASSES = \
+P2POmokClient.java\
+P2POmokServer.java
+
+default: classes
+
+classes: $(CLASSES:.java=.class)
 
 clean:
-	$(RM) $(objects)
+	$(RM) *.class
