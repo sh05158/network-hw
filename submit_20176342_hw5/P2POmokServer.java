@@ -88,9 +88,6 @@ public class P2POmokServer {
             while (true) {
                 // listener is waiting for tcp connection of clients.
                 conn = listener.accept();
-                System.out.printf("Connection request from %s\n", conn.getInetAddress().toString().split("/")[1] + ":" + conn.getPort());
-
-                
 
                 int bufferSize = 1024;
                 byte[] buffer = new byte[bufferSize];
@@ -110,6 +107,8 @@ public class P2POmokServer {
                 String port = conn.getPort()+"";
 
                 client newClient = new client(targetNick, uniqueID, conn, ip, port, remoteAddr);
+
+                System.out.printf("%s joined from from %s. UDP port %s\n", targetNick,ip,conn.getPort());
                 
                 registerClient(newClient, uniqueID);
                 
@@ -120,6 +119,7 @@ public class P2POmokServer {
 
                 if (clientMap.size() == 1) {
                     sendPacket(newClient, "waiting||");
+                    System.out.printf("1 user connected, waiting for another\n");
                 } else if(clientMap.size() == 2) {
                     client otherRemote = new client(-1);
 
@@ -131,6 +131,9 @@ public class P2POmokServer {
                             sendPacket(v,"matched|"+newClient.nickname+"|"+newClient.remote);
                         }
                     }
+
+			        System.out.printf("2 users connected, notifying %s and %s\n",otherRemote.nickname,newClient.nickname );
+
                    
                     sendPacket(newClient,"success|"+otherRemote.nickname+"|"+otherRemote.remote);
         
@@ -138,6 +141,7 @@ public class P2POmokServer {
                         client v = clientMap.get(key);
                         unregisterClient(v.uniqueID);
                     }
+			        System.out.printf("%s and %s disconnected.\n",otherRemote.nickname,newClient.nickname );
                    
         
                 }
@@ -156,8 +160,8 @@ public class P2POmokServer {
         clientMap.put(uniqueID, client);
         return uniqueID;
     }
-    public static void unregisterClient(int uniqueID){
-        clientMap.remove(uniqueID);
+    public static client unregisterClient(int uniqueID){
+        return clientMap.remove(uniqueID);
     }
 	public static class ByeByeThread extends Thread {
         // ByeBye Thread for graceful exit program.
@@ -216,7 +220,15 @@ public class P2POmokServer {
                     if (count == -1) {
                         System.out.println("Client disconnected");
 
-                        unregisterClient(this.uniqueID);
+                        client client = unregisterClient(this.uniqueID);
+
+                        if (P2POmokServer.clientMap.size() == 1){
+				            System.out.printf("%s disconnected. 1 User left in server.\n",client.nickname);
+
+                        } else if(P2POmokServer.clientMap.size() == 0){
+				            System.out.printf("%s disconnected. No User left in server.\n",client.nickname);
+
+                        }
 
                         break;
                     }

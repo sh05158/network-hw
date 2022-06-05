@@ -19,7 +19,7 @@ import (
 )
 
 var serverName string = "nsl2.cau.ac.kr" //server host
-var serverPort string = "56342"     //server port
+var serverPort string = "56342"          //server port
 
 var myTurn bool
 var isFirst bool

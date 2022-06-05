@@ -50,7 +50,6 @@ func main() {
 			handleError(conn, err, "server accept error..")
 		}
 
-		fmt.Printf("Connection request from %s\n", conn.RemoteAddr().String())
 
 		nickBuffer := make([]byte, 1024)
 
@@ -63,11 +62,15 @@ func main() {
 
 		targetNick := string(nickBuffer[:count])
 
+
+
 		remoteAddr := conn.RemoteAddr().String()
 		lastIdx := strings.LastIndex(remoteAddr, ":")
 
 		newIP := remoteAddr[0:lastIdx]
 		newPort := remoteAddr[lastIdx+1:]
+
+		fmt.Printf("%s joined from from %s. UDP port %s\n", targetNick,conn.RemoteAddr().String(),newPort)
 
 		newClient := client{targetNick, uniqueID, conn, newIP, newPort, remoteAddr}
 
@@ -78,6 +81,7 @@ func main() {
 
 		if len(clientMap) == 1 {
 			sendPacket(newClient, "waiting||")
+			fmt.Printf("1 user connected, waiting for another\n")
 		} else if len(clientMap) == 2 {
 			var otherRemote client
 			for _, v := range clientMap {
@@ -88,9 +92,13 @@ func main() {
 			}
 			sendPacket(newClient, "success|"+otherRemote.nickname+"|"+otherRemote.remote)
 
+			fmt.Printf("2 users connected, notifying %s and %s\n",otherRemote.nickname,newClient.nickname )
+
+
 			for _, v := range clientMap {
 				unregisterClient(v.uniqueID)
 			}
+			fmt.Printf("%s and %s disconnected.\n",otherRemote.nickname,newClient.nickname )
 
 		}
 
@@ -111,7 +119,12 @@ func handleMsg(client client, cid int) {
 		if err != nil {
 			unregisterClient(cid)
 			// broadCastToAll(6, fmt.Sprintf("%s is disconnected. There are %d users in the chat room", client.nickname, len(clientMap)))
-			handleError(client.conn, err, "client disconnected!")
+			if len(clientMap) == 1{
+				fmt.Printf("%s disconnected. 1 User left in server.\n",client.nickname)
+			} else if len(clientMap) == 0{
+				fmt.Printf("%s disconnected. No User left in server.\n",client.nickname)
+			}
+			handleError(client.conn, err, "%s disconnected!")
 			return
 		}
 
