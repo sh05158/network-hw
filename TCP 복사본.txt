@@ -296,3 +296,83 @@ closing a connection
 : FIN 받으면 ACK도 FIN
 
 close()해도 서버에서는 계속 보낼 수 있음
+
+
+congestion control을 하고싶다.
+congestion이 있으면 rate를 감소시켜서 혼잡 제거
+
+혼잡이 없으면 rate를 증가시켜서 bandwidth 상승시켜야됌
+
+1. 어떻게 rate를 통제?
+2. 어떻게 congestion을 감지?
+3. 얼마나 rate를 증가 또는 감소?
+
+tcp congestion control : keywords 외워야됌
+1. slow start
+2. congestion avoidance - AIMD (Additive Increase Multiplicative Decrease)
+3. fast recovery
+
+
+congestion window : cwnd
+slow-start threshold : ssthread
+MSS, RTT
+
+ACK received : 좋음
+timeout : 뭔가 잘못됌, 제일나쁜 경우
+3 duplicate ACK received : 안좋은데 타임아웃보다는 나음
+
+TCP : pipeline protocol(window of packet)
+                        outstanding un-acked
+
+
+LastByteSent - LastByteAcked <= cwnd
+
+cwnd(congestion window) is variable, dynamic, adaptive
+
+congestion control은 실제로는 윈도우 사이즈를 통제한다
+
+sending rate = cwnd/RTT bytes/sec
+
+
+TCP slow start
+: MSS = maximum segment size
+연결 초반에는 첫 로스 이벤트가 발생하기 전까지 rate를 exponentially하게 증가
+
+initial cwnd = 10MSS
+double cwnd every RTT ( ACK 받을때마다 cwnd 두배)\
+
+초기 rate는 느리지만 exponentially하게 빨라진다
+
+timeout 이벤트 받으면 slow start 다시 처음부터 시작한다
+
+3 dup ACK 받으면 congestion avoidance 상태로 이동한다.
+
+TCP는 loss를 congestion이라고 추측함(유선 네트워크에서)
+
+1. loss가 timeout으로 인해 발생(very bad)
+cwnd set to 1MSS
+윈도우는 slow start 한다. ssthresh 제한까지 exponentially 하게 증가 시킴
+sshthresh 까지올라가면 linearyly하게 증가시킴(congestion avoidance 상태)
+
+2. 3 dup ACK 받으면 패킷 loss된것
+   cwnd를 절반으로 줄인다. 
+그리고 congestion avoidance 상태로 만듬
+ 
+
+ 11-1
+congestion avoidance : AMID
+Additive Incrase Multiplicative decrease
+
+additive increase : loss 감지될 때 까지 cwnd 1MSS 증가시킴
+multiplicative decrease : 로스 감지 시 cwnd half로 만듬
+
+timeout => 1
+3 dup ACK => half
+
+
+
+11-3
+
+네트워크 layer는 hosts 사이의 논리적인 연결
+transport layer는 processes 사이의 논리적인 연결
+
