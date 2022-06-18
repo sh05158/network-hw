@@ -1,0 +1,298 @@
+TCP
+
+1.Connection-oriented
+establish handshake 핸드쉐이킹 필요(sender, receive 사이)
+state 초기화 하는것이다
+real circuit 이 아니라 걍 logical circuit임
+sender receiver 사이에는 아무 tcp 관련 정보x
+
+one sender, one receiver per Connection
+2.logical end to end Connection
+: flow control=>
+
+3. bi-direciton data 둘다 전송 가능 
+
+reliable , in-order, byte stream
+메세지 경계가 없음
+app이 메세지를 알아서 나눠서 받아야됌(byte stream)
+in order : 순서가 어떻게 오든 버퍼에서 순서대로 정렬
+100% or 0%
+MSS:Maximum segment size
+파이프라인
+윈도우 사이즈 : adaptive/dynamic window size
+
+TCP variant 버전들
+:TCP Tahoe 초기버전
+TCP Reno : 거의 모두 사용함
+TCP Vegas
+TCP Westwood
+TCP BIC : korea
+TCP CUBIC : Default tcp in linux
+
+slow start, congestion avoidance, fast recovery
+TCP (new) Reno에 대해 배움
+
+
+
+TCP segment structure(합쳐서 MSS Maximum
+segment size를 넘지 못함)
+: TCP header
+: TCP payload(application data 가변길이)
+source port#, dest port# (UDP와 비슷)
+sequence number
+acknowledgement number(sequence number에 대해
+인정하는 값)
+sender, receiver single one connection
+=> "full duplex"
+
+sender : data
+receiver: ack+data
+sender : data+ack
+합쳐져서 data,ack,data,ack,data,adk,,,
+
+sequence, acknowledgement number은 세그먼트가 아니라
+바이트 스트림의 카운트를 한다
+
+U A P R S F
+
+A : ACK # valid
+R : RST (리셋)
+S : SYN
+F : FIN
+R S F
+
+
+receive window : bytes receiver
+willing to accept(flow control)
+리시버의 버퍼 오버플로우 되지 않게 하려고 사용
+
+checksum(UDP와 비슷함)
+
+header length
+헤더에도 option 있어서 헤더가 가변길이임
+
+
+
+
+sender가 엄청 큰 500kb 메세지를 보내고 싶어함.
+MSS = 1000bytes
+
+500KB message
+= 500000B => 500개의 segment data로 쪼갬
+
+sequence number는 바이트 스트림의 첫번째
+바이트
+
+1번째 segment data의 sequence number = 0
+2번째                   = 1000
+3번째                   = 2000...
+
+acknowledgement number:
+next byte expected 다음 바이트로 예상되는
+
+seg#1 => 0
+ack - 1000
+cumulative ACK 사용!
+
+seq#2 => 1000
+ack -> 2000
+
+seq#4 => 
+ack -> 2000
+
+중간에 하나 끊기면 receiver는 그 전의 ack 번호를
+계속 보낸다 -> cumulative ack
+
+N window size
+
+1.sent ACKed
+2.sent, not yet ACKed(in flight = in pipeline)
+3.usable but not yet sent
+4. not usable
+
+랜덤 숫자에서 시작됌.
+모든 새 연결마다 랜덤 숫자에서 시작됌.
+어떻게 시작 넘버를 아냐? tcp connection
+연결단계에서 서로 알려준다
+
+어떻게 뒤죽박죽 순서를 다루냐?
+버퍼에 스택으로 1,2,4,5 순서대로 넣고
+중간에 3 들어오면 소팅한다
+
+TCP코드를 쓰기 나름(os에서)
+os개발자가 정하기 나름이다
+
+
+두 연결이 매우 유사한 랜덤 넘버를 사용할 경우 어떻게?
+겹칠 확률이 애초에 매우 낮음
+매우 낮을 확률로 겹치면? lose packet
+프로그램 껐다 켜야됌??
+
+p67
+simple echo program
+
+1.connection establish
+42<->79 랜덤 숫자
+
+I got everything up to 42(ACK 43)
+
+
+TCP RTT, timeout
+타임아웃 되면 패킷로스라고 판단하고 다시 보냄
+timeout vlaue 어떻게 설정?
+too short : 불필요한 재전송
+too long : slow , low throughput
+RTT값은 queuing delay때문에 변한다..
+queueing delay는 혼잡도에 따라 변한다
+
+처음에 RTT 모를때는 어떻게?
+타임아웃 시간 정하는 기준 문제점 2가지
+1. RTT 길이 어떻게?
+2. 처음에는 RTT 모르는데 어떻게?
+timer는 몇개?
+
+SampleRTT 사용: ack 받을때까지의 시간 측정
+평균 sampleRTT?
+Exponential Weighted Moving Average(EWMA)
+EstimatedRTT = (1-a)*EstimatedRTT+a*SampleRTT
+과거 값일수록 엄청나게 영향이 적어진다.
+
+EstimatedRTT 계산 후 + safety margin 더해야됌
+실제 timeout value는 충분히 커야됌
+근데 실제 RTT는 변동폭이 너무 크다!
+
+deviation? 샘플RTT와 estimate의 낙폭
+DevRTT = (1-b)*DevRTT+b*|SampleRTT-EstimatedRTT|
+most recent deviation=|SampleRTT-EstimatedRTT|
+
+TimeoutInterval = EstimatedRTT+4*DevRTT
+=> estimated RTT + "safety margin"(4*DevRTT)
+
+
+
+TCP - reliable data transfer
+IP / best effort
+데이터는 오염,손실 될수있다(큐 오버플로우나 out of order때문에)
+
+TCP는 바이트 스트림을 오염없고 갭없고 중복없고
+순서대로 전달해준다
+-> 파이프라인, cumulative, single retransmission timer 사용
+재전송 발생 조건
+1. 타임아웃
+2. 중복된 ack
+
+
+시퀀스 넘버로 세그먼트 만들고
+타이머 시작한다.
+interval : EstRTT+4*DevRTT
+
+타임아웃 되면
+: segment 재전송 하고 타이머 재시작
+타임아웃 되면 타임아웃 인터벌 두배로 해서 보낸다.
+=> 패킷 잃어버렸거나, 오래 걸리는것
+보통 타임아웃은 네트워크 very congested일때
+발생한다
+
+unacked segment에서 ACK 받으면 ㅇㅋ
+ack 이미 받은거 중복되면?
+
+모든 패킷이 순서대로 리시버에게 도착할 경우
+=> delayed ACK을 사용해서 0.5초동안 다음 세그먼트가
+안오면 ACK을 보내서 ACK의 갯수를 최소화한다
+
+ACK every 2 segments
+sender 10segments-> receiver 5ack
+
+
+더 높은 seq num의 segment가 온 경우
+duplicate ACK을 보낸다!
+ex) 1 2 x x 5가 온 경우 ACK 3을 또 보낸다
+1 2 x x 5가 온 경우 5를 버퍼에 저장
+갭이 채워질 경우 가장 높은 ACK를 즉시 보낸다
+
+
+TCP fast retransmit
+문제 : 타임아웃 기간이 상대적으로 길다
+lost packet을 재전송 하기 전에 딜레이가 길다
+
+duplicate ack으로 잃어버린 segment를 감지하자
+
+triple duplicate ACK를 받을 경우
+타임아웃 기다리지 말고 unacked된 segment를 다시 보내자
+
+
+10-1
+congestion control ?
+=>send slowly
+control how fast sender sends
+if greedy => bad for everyone
+you should be polite&nice
+should not be greedy
+how slowly?
+얼마나 천천히 보내야 모두가 만족?
+혼잡:너무 많은 사람이 너무 많은 데이터를 너무 빨리 보내는 것
+flow control과 다르다.. 
+
+1.How to detect congestion?
+
+2.congestion 감지 시 뭘 해야되나?
+
+가정1. sender가 버퍼 이용 가능할때만 보낸다
+가정2. 패킷이 lost된것만 안다
+가정3. lost+timeout까지 된다고 가정
+
+congestion collapse
+모두가 계속 보내면 결국엔
+대역폭을 모두 duplicate, lossess, retransmit으로
+사용하게 된다.
+
+
+
+flow control
+: sender가 너무 빠르게 보내지 않게 하자
+
+
+app에서 TCP 소켓 버퍼를 제거하는 속도보다
+sender가 보내는 속도가 빠르다면
+버퍼가 터질 것
+
+buffer full 문제가 나면
+drop data를 해야됌
+
+
+receiver가 sender를 통제해서
+sender가 너무 빠르게 보내지 않게 해야됌
+
+receive window에 rwnd 값 포함
+RcvBuffer 기본 4096바이트,
+os에서 해당 값 자동조정한다.
+
+
+Connection Management
+: 데이터 교환 전, handshake 해야됌
+서로 동의해야됌
+connection state, variables(seq#, rcvBuffer)
+
+
+2-way handshake
+: let's talk, ok
+: 문제는 상대편을 볼 수없다.
+: OK메세지가 로스 나면 문제됌
+
+: let's talk가 오래 걸려서 타임아웃되면..
+
+
+
+
+3-way handshake
+: 1.TCP SYN (SYNbit = 1, Seq=x)
+2. TCP SYNACK (SYNbit = 1, Seq=y)
+              (ACKbit=1, ACKnum=x+1)
+3. ACK for SYNACK (ACKbit=1, ACKnum=y+1)
+
+
+closing a connection
+: send TCP segment with FIN bit=1
+: FIN 받으면 ACK도 FIN
+
+close()해도 서버에서는 계속 보낼 수 있음
