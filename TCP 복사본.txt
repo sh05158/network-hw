@@ -376,3 +376,476 @@ timeout => 1
 네트워크 layer는 hosts 사이의 논리적인 연결
 transport layer는 processes 사이의 논리적인 연결
 
+end host는 5개 레이어 : app, transport,
+network, link, physical
+
+app message-> payload of tcp
+tcp header+tcp payload->ip payload
+ipheader + ip payload -> ip datagram
+link header+ip datagram -> link payload
+
+data plane
+router에는 뭐기 있냐?
+IP
+
+network layer : segment 를 호스트에ㅓㅅ 호스트로 옮김
+
+segment를 datagram으로 encapsulate한다
+
+1. forwarding : 패킷을 라우터의 input link interface
+에서 적절한 output link interface로 옮기는 것
+data plane, 라우터당 하나
+HW에서 구현됌(나노초 단위)
+forwarding table을 활용해서 구현
+drop 혹은 duplicate packet 한다
+
+2. 라우팅 : 라우팅의 목표는 forwarding table
+만드는 것 
+control plane, network-wide process
+라우팅 알고리즘은 SW으로 구현
+shortest spanning tree
+다익스트라 최단거리 알고리즘 등 ..
+벨먼 포드 ..등..
+
+
+Data plane : 로컬, 라우터당 하나
+datagram이 input port 에서 output port로
+forwarded되는 걸 결정
+forwarding function
+forwarding table 사용한다
+
+
+Control plane: 네트워크에 퍼져있는 전체 로직
+datagram이 라우터들 사이에서 routed되는걸 결정
+source host에서 dest host로
+forwarding table을 set한다
+
+두 control-plane 접근법 : 
+A.라우터들에서 구현하는 전통적인 알고리즘
+: 모든 라우터에 forward table이 있다. 
+
+B. SDN(software defined networking)
+: 원격 컨트롤러에서 알고리즘으로 forwarding table
+만들어서 모든 라우터들에 뿌려준다 
+
+인터넷은 best-effort라서 아무것도 보장해주지 않는다.
+
+
+
+라우터 아키텍쳐
+: 라우팅은 control plane(소프트웨어)
+하드웨어에 비하면 많이 느리다
+
+forwarding data plane(하드웨어)
+: 나노초 단위
+
+router input ports -> Software(switching) ->
+router output ports
+
+포워딩 테이블을 routing 프로세서에서 line cards로 복사해놓는다
+인풋 포트에서 프로세서에 물어보지 않고
+바로 결정한다
+
+인풋 포트 function
+: 신호가 들어오면 line termination에서 
+신호를 bit로 변환(physical layer)
+그 후 link layer protocol(receive)여기서
+data link lyaer에서 이더넷
+그 후 큐잉되고 forwarding table을 보고 헤더 필드를
+보고 아웃풋 포트를 결정한다.
+
+destination based forwarding:
+목적지 ip 주소만 가지고 forward
+
+generalized forwarding : 헤더 값가지고
+포워딩한다(SDN)
+
+스위칭 패브릭은 하나라서
+인풋이 여러개라서 바쁘다
+그래서 큐잉이 있다
+
+destination address based forwarding
+: 포워딩 테이블 
+
+Longest prefix matching
+: 와일드카드로 끝나게 매칭된다
+애매한 경우엔 와일드카드가 적은 링크 인터페이스와
+매칭시킨다.(prefix가 longest하니까)
+
+
+나노초 내에 매칭되야됌
+TCAMs(ternary content addressable memories)
+content addressable:address to TCAM 한 사이클
+내에 진행되야됌 테이블 사이즈랑 관련없이
+
+라우팅을 위해 특별히 디자인된 메모리가 필요
+
+physical, link layer 프로세싱에서
+패킷의 버전(IPv4, ,,, ) 체크섬(bit error),
+TTL등이 체크가 되야한다
+TTL, checksum은 값이 re write 되야함!!
+
+
+
+
+switching fabric
+: 인풋 버퍼에서 아웃풋 버퍼로 전송한다
+switching rate : 인풋에서 아웃풋으로 전송하는 비율
+
+N개의 인풋이면 switching rate가 N배가 되는게
+좋다
+
+switching fabric 3가지 종류
+1. 메모리 복사(느리다)
+2. 버스 방식 (한번에 패킷 1개만 가능))
+3. 크로스바(최신) ( 여러 패킷 동시 처리 가능 )
+
+
+
+input port 큐잉
+: fabric이 N개의 인풋 포트보다 느리다.
+큐잉이 반드시 필요함!
+input buffer overflow때문에
+큐잉 딜레이와 로스가 발생한다.
+
+Head of line blocking:데이터그램을 큐잉한다
+패킷의 순서가 바뀌면 한번에 더 많은 양을 처리할 수 있지만
+제일 앞에 있는 큐잉 패킷을 무시하고 먼저
+처리할 수 없다.
+
+
+
+Output port:
+switch fabric -> output link
+link bandwidth(100Mbps)
+
+transmission rate보다 datagram이 fabric을 출발하면
+버퍼링이 발생할 수 밖에 없다!
+그러면 Datagram이 congestion이나 버퍼가 부족해서
+lost될 수 있다.
+
+scheduling은 아웃풋 포트에서 큐잉된 애들에서 select한다
+priority scheuling - 큐에서 제일 중요한
+애들을 선정한다
+
+output port queueing/buffering
+: 어떤 패킷을 drop 시킬거냐?
+
+drop tail : 제일 마지막에 있는애 드랍
+RED(random early detection)
+
+라우터 메모리 사이즈를 어떻게 할거냐?
+
+
+스케쥴링 메커니즘:
+링크로 보낼 다음 패킷을 고르는 것?
+
+FIFO(First in First Out)
+: 도착한 순서대로 보낸다
+First Come First Serve
+discard policy: 큐가 꽉차면 어떤걸 드랍?
+
+scheduling <-> discard 
+
+discard : tail drop, priority, random, ,,
+
+Priority scheduling
+: 패킷이 들어오면 high, low priority 큐로 구분
+구분은 헤더 인포(ip, port 등)으로 한다...
+
+
+Round Robin(RR):분류마다 순서대로 한번씩
+(red green red green ..) cyclially
+
+Weighted Fair Queueoing(WFQ)
+: 기본이 round robin이지만 여기에 우선순위 부여 
+
+
+
+
+
+
+IP : Internet protocol
+: network layer(L3)
+
+host, router, network layer function
+
+라우팅 프로토콜:RIP OSPF BGP <-> 포워딩 테이블
+ip 프로토콜:addressing convention
+ICMP 프로토콜 : ping, traceroute,,,등 
+
+
+IP header = 20바이트
+option넣으면 더 길어짐(variable)
+
+ip payload (가변길이): tcp, udp segment 
+0100(v4), 0110(v6)
+
+type of service(데이터그램의 타입)
+
+TTL:남은 hops의 갯수(라우터 지날때마다 1씩 감소)
+
+protocol:TCP냐 UDP냐 등..
+
+length:total datagram length(0~65535)
+
+16-bit identifier, flgs, fragment offset
+
+20바이트 TCP header
+20바이트 ip header
+최소 40바이트 필요+app layer overhead
+
+32bit source ip
+32bit destination ip 
+
+TTL : circular 반복을 하지 않게 해줌
+protocol : network가 transport 레이어에
+어떻게 연결해줬냐 판단
+
+length : 16비트, 헤더+페이로드
+
+IPv4 Fragmentation.
+IPv6는 fragmentation 허용 x
+
+Internet checksum : 체크섬은 매 라우터마다
+다시 계산되야됌. TTL값이 변하기 때문 
+IPv6는 체크섬이 없다 왜?
+
+체크섬이 필요하냐?
+TCP/UDP have checksum
+체크섬을 이미 TCP/UDP등 많이 계산해서
+더시간 낭비하기 싫어서 IPv6는 체크섬이 없다?
+
+
+12-3
+
+IP Fragmentation
+
+네트워크 링크는 MTU가 있다 Maximum Transport Unit
+ex:ehternet MTU = 1500Byte
+
+Large IP datagram이 fragmented화된다.
+데이터그램 하나가 여러개로 쪼개짐 .
+마지막 목적지에서만 다시 하나로 합쳐진다 
+
+IP 헤더 비트는 곤련된 fragment를 합치는데 사용됌 
+
+4000바이트짜리를 MTU 1500으로 쪼개면
+
+20+1480 fragflag=1 offset=0
+20+1480 fragflag=1 offset=185*8
+20+1020 fragflag=0 offset=370*8
+
+
+IPv6은 fragmentation이 불가능
+=> fragment쪼개고 합치고 하는데 시간이 오래걸림
+
+IPv4 => 32비트 interface for host, router
+public IP address는 unique
+
+이더넷 스위치(허브)를 이용해서 연결함)
+
+IP : subnet, host
+223.1.1.9/24
+24비트 기준으로 왼쪽 subnet, host구분 
+
+서브넷이 같으면 라우터 없이 서로 접근 가능 
+
+
+CIDR(Classless InterDomain Routing)
+: 클래스가 뭔데?
+: Classful addressing ? 애매한 사이즈의 클래스는
+다루기 애매함. inflexible 유연하지 못함 
+: class A 제일 큼 
+: 1개가 1600만개 호스트 다룸 
+그담 class B => 65000
+class C => 254
+,등....
+
+그래서 CIDR 사용 (classless)
+: 무작위 길이 subnet 지원 
+
+
+subnet mask
+
+
+IP address, 어떻게 하나를 얻냐?
+
+host가 어떻게 ip 얻음?
+1. 하드코딩
+2. 동적으로 얻는법? DHCP
+
+DHCP(Dynamic Host Configuration Protocol)
+: 네트워크 참여시  ip 동적으로 획득 
+: 같은 ,ip 재사용 가능 
+
+DHCP discover
+DHCP offer
+DHCP request
+DHCP ack
+
+DHCP discover
+: 소스 0.0.0.0, dst 255.255.255.255
+
+그럼 서버에서 요청 받아서
+DHCP offer
+: src : 223.1.2.5, dest:255.255.255.255
+yiaddrr:223.1.2.4
+lifetime : 1hour
+
+그다음 클라이언트
+DHCP request
+: src 0.0.0.0, dest 255.255.255.255,
+yiaddrr:223.1.2.4
+
+그 후 마지막 서버에서
+DHCP ACK
+src : 223.1.2.5, dest 255.255.255.255,
+yiaddrr:223.1.2.4
+
+DHCP는 subnet에서 할당된 ip보다 더 많은걸
+알려줄 수 있음
+first hop router의 주소, DNS server의 이름과ip
+네트워크 마스크
+
+
+DHCP 요청은 UDP에서 encapsulate된다
+
+ISP는 서브넷을 여러개로 쪼개준다 
+
+
+Hierarchical addressing:
+
+더 큰 ISP는 자기 바로 아래꺼만 알면 된다.
+longest prefix matching
+
+
+NAT(network address translation)
+: 1 public ip address to several computers
+private IP address
+192.168.*.*/24
+
+public<->NATbox<->private IP address
+WAN IP <-> LAN IP
+
+IP -> src : 10.0.0.2
+
+모든 기기에 하나의 아이피만 있다
+바깥과 상관없이 로컬 네트워크에서는 주소를 바꿀 수 있다
+로컬 아이피 상관없이 ISP 변경 가능 
+바깥에 직접적으로 아이피 노출 x
+NAT router는 src IP addr, port를
+public(NAT IP addr, new port)로 변환
+
+datagram 보낼때 기억해서 NAT table 생성
+다시 받을 때 NAT table 참고해서 NAT IP addr을
+src ip addr로 변환해서 받는다 .
+
+NAT은 논란이 있다
+
+
+IPv6 : ipv4 아이피는 부족할 것이다..
+checksum 계산이 오래걸려서 없애서 속도를 높임
+40바이트 고정길이 헤더
+fragmentation 금지
+체크섬 없음
+
+
+IPv6 데이터그램 포맷:
+우선순위,
+flow label
+next header : ipv4의 프로토콜 
+next header에서 옵션이 있냐 없냐 플래그 세운다
+옵션 자체는 data payload 안에 포함 
+ICMPv6 : 
+
+
+IPv4 to IPv6 변환
+: 모든 라우터를 한번에 다 바꿀순 없다
+어떻게 mixed 해서 사용?
+tunneling을 하면 된다.
+터널링 : IPv4 데이터그램 안에 IPv6 데이터그램을
+페이로드로 포함시킨다.
+
+IPv6 : 8퍼센트만 사용??
+IPv4와 IPv6을 섞어서 영원히 사용할듯?
+NAT이 너무 유용해서 
+IPv6는 너무 길어서 사용 힘들다..기억하기 힘듬 
+
+Generalized Forward and SDN
+: flow table? 어떻게 계산됌? 라우팅 알고리즘
+
+
+
+13-1
+
+Network layer - control plane
+
+forwarding, routing
+
+포워딩 : data plane
+
+라우팅 : control plane
+
+
+라우팅 프로토콜 
+: good path를 결정하는것 
+path : 라우터의 순서 패킷이 처음부터 도착할때까지의 경로
+good : 적은 비용, 빠름, least congested
+
+
+라우팅 알고리즘 분류
+1. global(하나의 라우터가 모든 정보를 안다) link state algorithm
+2. decentralized(하나의 라우터는 이웃만 안다) distance vector algorithm
+
+static : 라우트가 아주 천천히 변함
+dynamic : 라우터가 빠르게 변함(주기적으로)
+
+
+link state
+: router know the complete topology
+complete graph of network
+
+다익스트라 알고리즘 
+: complete global net topology, link costs known
+to all nodes
+한 노드에서 모든 다른 노드로 가는 최소 비용을 계산
+computes sp from one node to every other node 
+그 후 forwarding table 계산 한다 
+ 
+
+ oscillation 문제가 있음 .
+
+ 
+
+
+ distance vector
+ : 벨먼 포드 알고리즘(DP)
+ iterative, asynchronous
+ : Distance Vector update message from
+ neighbor
+ 업데이트 받았을 때 iteration 돌리면 됌 
+
+ distributed : DV 변경될때만 이웃에게
+ 말해주면 됌 
+
+ wait for change -> recompute -> chnaged and notify
+
+
+ link cost가 변했을 시 
+ : cost 감소
+
+
+Link state와 distance vector 비교
+: LS : n*E message
+  DV : 이웃만 보냄
+
+convergence 속도
+LS : N^2
+DV : 계속 변함, 루프 가능, count to infinity 문제
+
+robustness
+:LS : 각 노드마다 자신의 테이블 생성 
+DV : 각 노드의 테이블이 다른 이들에 의 해 사용됌 
+따라서 에러가 네트워크를 통해 전파 가능 
+
