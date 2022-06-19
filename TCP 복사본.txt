@@ -849,3 +849,146 @@ robustness
 DV : 각 노드의 테이블이 다른 이들에 의 해 사용됌 
 따라서 에러가 네트워크를 통해 전파 가능 
 
+
+
+intra-AS routing in OSPF
+: 모든 라우터가 동등하다고 가정 
+: administrative autonomy (AS)
+인터넷은 네트워크의 네트워크 
+: 각 네트워크 관리자는 그들 네트워크를 통제하고싶어함 
+라우터들을 지역으로 합치는 것을 autonomous system(AS)
+이라고 부른다( domain )
+
+1. intra-AS routing
+: 호스트,라우터들 사이에서 라우팅함(같은 AS)
+: 모든 라우터는 같은 intra-domain 프로토콜 사용 
+: 다른 AS에 있는 라우터는 다른 intra-domain 라우팅
+프로토콜 사용
+: 게이트웨이 라우터는 AS의 엣지로 다른 AS에 연결 
+
+2.inter-AS routing
+: BGP 프로토콜(AS를 연결하는 엣지 처럼??)
+: 외부 AS로 나가는 길을 학습한다!
+
+intra-as routing 알고리즘+ inter-as routing 알고리즘
+합쳐서 포워딩 테이블 생성
+
+intra-as는 as에서의 목적지 결정
+inter-as와 intra-as는 외부 목적지 결정 
+
+
+
+intra-as routing
+: RIP (routing information protocol) : 벨먼포드
+: OSPF (Open Shortest Path First) : ISIS,다익스트라 변형
+
+
+OSPF(Open Shortest Path First):
+open : 모두 이용가능한것
+link state 알고리즘 사용(AS안의 라우터들이 서로 모두 안다))
+따라서 다익스트라 알고리즘 사용 
+각 라우터는 모든 라우터에게 정보를 보내야됌 
+
+ 
+ BGP(Border Gateway Protocol)
+ : BGP 사이에서는 eBGP 사용
+ : eBGP사이에서 정보를 받으면 AS 내부에서 정보를
+ 전달하는건 iBGP
+
+
+ 게이트웨이 라우터는 eBGP iBGP 둘다 사용
+
+ BGP 세션 : 두 BGP 라우터가 반영구 TCP로 연결됌 
+
+ 게이트웨이 라우터는 목적지를 향한 여러 경로를 학습
+
+ BGP route 선택
+ 1. policy decision
+ 2. shortest AS-Path
+ 3. closest next-hop router(hot potato)
+ 4. additional criteria
+
+ hot potato routing?
+ : 글로벌 비용이 더 높더라도 로컬 비용이 낮은 길을 선택!
+
+  
+  정책
+  inter-as : 관리자가 어떻게 트래픽이
+  라우팅되는 지 통제하고 싶다.
+  intra-as : 곤리자가 혼자라 정책 결정이 필요 
+
+
+intra-as 는 성능에 집중 가능
+inter-as는 정책이 더 중요 
+
+
+ICMP : 인터넷 컨트롤 메세지 프로토콜
+Internet control message protocol
+
+ICMP : 에러리포팅, request/reply ping 등 
+ICMP 메세지는 ip datagrams 안에 포함됌 
+
+
+traceroute는 UDP segment 사용 
+first - > TTL =1 
+second -> TTL =2
+
+TTL 만료되면 datagram 버리고 ICMP 메세지를
+다시 돌려준다 
+
+
+Network management and SNMP
+: 네트워크 관리? AS
+
+managing entity(서버)가
+agent들에게 정보 요청!
+agent들에게 Management Information Base(MIB)를
+받는다!
+Simple network management protocol
+
+
+14-3
+
+Life of a web request
+
+웹 리퀘스트
+
+1. 먼저 ip가 필요하다
+ip를 얻기 위해서는 DHCP 사용
+DHCP 요청은 UDP로 캡슐레이트됌, IP
+L2 broadcast, DHCP서버는 해당 요청을 받는다
+그 후 DHCP서버에서 DHCP ACK를 날려줌 
+DHCP client가 DHCP ACK reply를 받으면
+이제서야 클라이언트가 ip를 갖게 됌 추가로
+DNS서버의 이름과 주소, first-hop 라우터의ip주소도
+같이 알게 된다.
+
+2. DNS querying
+http request를 보내기 전에 google.com의
+ip주소를 알아야 된다.
+DNS query가 만들어지고 UDP IP로 encapsulate된다
+
+DNS query를 포함한 ip datagram은 first hop
+router를 경유해서 다른 AS를 향해서 간다.
+DNS server는 ip를 응답해준다.
+
+MAC address는 어떻게 알아내냐?
+ARP 프로토콜 사용(ip -> mac)
+
+ARP query를 날리면
+라우터는 ARP reply를 답장해줌 
+
+HTTP request를 보내기 위해선 서버에 TCP 소켓으로
+연결해야됌 TCP Syn을 위에서 보내준 DNS query 결과
+에 보내준다
+TCP Syn -> TCP SynACK -> TCP ACK back
+
+3-way handshake가 끝난 후
+http request를 tcp socket을 통해 한다
+
+ip datagram을 보낸다 google 에
+그 후 웹서버는 http reply를 해준다
+
+
+만약에 wireless일 경우?
+AP와 L2 Connection 하는 과정이 필요 
